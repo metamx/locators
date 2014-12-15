@@ -151,18 +151,16 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters) 
   });
 
   var emitter = new EventEmitter();
-  var active = false;
-
-  function activate() {
-    if (active) {
-      return;
-    }
+  function setup() {
     client.on("connected", () => emitter.emit("connected"));
     client.on("disconnected", () => emitter.emit("disconnected"));
+    client.on('state', (state: Object) => emitter.emit('state', state, client.getSessionId()));
     client.on("expired", () => emitter.emit("expired"));
+    emitter.emit('connecting');
     client.connect();
-    active = true;
   }
+
+  setup();
 
   var pathManager: { [path: string]: Locator.FacetLocator } = {};
   function manager(path: string): Locator.FacetLocator {
@@ -170,15 +168,14 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters) 
       throw new TypeError("path must be a string");
     }
     if (path[0] !== "/") path = "/" + path;
-    activate();
     pathManager[path] || (pathManager[path] = makeManagerForPath(client, path, emitter, dataExtractor, locatorTimeout));
     return pathManager[path];
   }
 
   Object.keys(EventEmitter.prototype).forEach((fnName) =>
-          (<any>manager)[fnName] = function() {
-            return (<any>emitter)[fnName].apply(emitter, arguments);
-          }
+    (<any>manager)[fnName] = function() {
+      return (<any>emitter)[fnName].apply(emitter, arguments);
+    }
   );
 
   return manager;
