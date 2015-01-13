@@ -9,13 +9,13 @@ export interface SimpleLocatorParameters {
   defaultPort?: number;
 }
 
-export function simpleLocator(parameters: string): Locator.FacetLocator;
-export function simpleLocator(parameters: SimpleLocatorParameters): Locator.FacetLocator;
-export function simpleLocator(parameters: any): Locator.FacetLocator {
+export function simpleLocatorFactory(parameters: SimpleLocatorParameters) {
   if (typeof parameters === "string") parameters = { resource: parameters };
-  var resource: string = parameters.resource;
-  var defaultPort: number = parameters.defaultPort;
+  var resource = parameters.resource;
   if (!resource) throw new Error("must have resource");
+
+  var defaultPort = parameters.defaultPort;
+  var locatorTimeout, sessionTimeout, spinDelay, retries; // to be included?
 
   var locations = resource.split(";").map((locationString) => {
     var parts = locationString.split(":");
