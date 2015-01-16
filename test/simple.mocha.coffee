@@ -1,13 +1,14 @@
 { expect } = require("chai")
 
-{simpleLocator} = require('../build/simple')
+{simpleLocatorFactory} = require('../build/simple')
 
 describe 'Simple locator', ->
   describe 'shortcut function', ->
-    locator = simpleLocator("localhost:8080")
+    locator = simpleLocatorFactory()
+    simpleLocator = locator("localhost:8080")
 
     it "works", (done) ->
-      locator((err, location) ->
+      simpleLocator((err, location) ->
         expect(err).to.not.exist
         expect(location).to.deep.equal({
           host: 'localhost'
@@ -17,13 +18,14 @@ describe 'Simple locator', ->
       )
 
   describe 'full option function', ->
-    locator = simpleLocator({
+    locator = simpleLocatorFactory()
+    simpleLocator = locator({
       resource: "localhost;koalastothemax.com:80"
       defaultPort: 8181
     })
 
     it "works", (done) ->
-      locator((err, location) ->
+      simpleLocator((err, location) ->
         expect(err).to.not.exist
         for i in [1..20]
           if location.host is 'localhost'
