@@ -3,6 +3,7 @@
 /// <reference path="../typings/node-zookeeper-client/node-zookeeper-client.d.ts" />
 "use strict";
 
+import http = require("http")
 import EventEmitterModule = require("events")
 import EventEmitter = EventEmitterModule.EventEmitter
 
@@ -25,6 +26,21 @@ export interface DataExtractor {
   (data: string): Locator.Location;
 }
 
+class ClientWrapper {
+  public client: Client;
+  public emitter: EventEmitter;
+
+  constructor() {
+    this.emitter = new EventEmitter();
+    this.client = null;
+  }
+
+  public setClient(client: Client) {
+    this.client = client;
+    this.emitter.emit('new_client');
+  }
+}
+
 function defaultDataExtractor(data: string): Locator.Location {
   var zkJS: ZookeeperJS;
   try {
@@ -43,7 +59,11 @@ function defaultDataExtractor(data: string): Locator.Location {
   };
 }
 
-function makeManagerForPath(client: Client, path: string, emitter: EventEmitter, dataExtractor: DataExtractor, locatorTimeout: number): Locator.FacetLocator {
+function defaultServerExtractor(data: string): string[] {
+  return JSON.parse(data);
+}
+
+function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter: EventEmitter, dataExtractor: DataExtractor, locatorTimeout: number): Locator.FacetLocator {
   var next = -1;
   var pool: Locator.Location[] = null;
   var queue: Locator.Callback[] = [];
@@ -77,7 +97,7 @@ function makeManagerForPath(client: Client, path: string, emitter: EventEmitter,
       return;
     }
 
-    async.map(children, (child, callback) => client.getData(path + "/" + child, (err, data) => {
+    async.map(children, (child, callback) => clientWrapper.client.getData(path + "/" + child, (err, data) => {
       if (err) {
         if (err.getCode() === Exception.NO_NODE) {
           callback(null, null);
@@ -101,10 +121,13 @@ function makeManagerForPath(client: Client, path: string, emitter: EventEmitter,
       console.log("Got watcher event: %s", event);
     }
     emitter.emit("change", path, event);
-    client.getChildren(path, onChange, onGetChildren);
+    clientWrapper.client.getChildren(path, onChange, onGetChildren);
   }
 
-  client.getChildren(path, onChange, onGetChildren);
+  clientWrapper.emitter.on('new_client', function () {
+    pool = null;
+    clientWrapper.client.getChildren(path, onChange, onGetChildren);
+  });
 
   return (callback) => {
     if (pool) {
@@ -127,40 +150,70 @@ function makeManagerForPath(client: Client, path: string, emitter: EventEmitter,
 }
 
 export interface ZookeeperLocatorParameters {
-  servers: string;
+  exhibitorUrl: string;
   dataExtractor: (data: string) => Locator.Location;
+  serverExtractor: (data: string) => string[];
   locatorTimeout: number;
   sessionTimeout: number;
   spinDelay: number;
   retries: number;
 }
 
-export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters) {
-  var servers = parameters.servers;
+export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters): Function {
+  if (!parameters.exhibitorUrl) {
+    throw new Error("need only one exhibitor url");
+  }
+
+  var exhibitorUrl = parameters.exhibitorUrl;
   var dataExtractor = parameters.dataExtractor;
+  var serverExtractor = parameters.serverExtractor;
   var locatorTimeout = parameters.locatorTimeout;
   var sessionTimeout = parameters.sessionTimeout;
   var spinDelay = parameters.spinDelay;
   var retries = parameters.retries;
+
+  serverExtractor || (serverExtractor = defaultServerExtractor);
   dataExtractor || (dataExtractor = defaultDataExtractor);
   locatorTimeout || (locatorTimeout = 2000);
-  var client = zookeeper.createClient(servers, {
-    sessionTimeout: sessionTimeout,
-    spinDelay: spinDelay,
-    retries: retries
-  });
 
   var emitter = new EventEmitter();
-  function setup() {
-    client.on("connected", () => emitter.emit("connected"));
-    client.on("disconnected", () => emitter.emit("disconnected"));
-    client.on('state', (state: Object) => emitter.emit('state', state, client.getSessionId()));
-    client.on("expired", () => emitter.emit("expired"));
-    emitter.emit('connecting');
-    client.connect();
-  }
+  var client: zookeeper.Client;
+  var clientWrapper = new ClientWrapper();
+  var connect = function () {
+    http.get(exhibitorUrl, function(res: http.ClientResponse) {
+      var output: string[] = [];
+      res.setEncoding('utf8');
 
-  setup();
+      res.on('data', function (chunk: string) {
+        output.push(chunk);
+      });
+
+      res.on('end', function () {
+        client = zookeeper.createClient(serverExtractor(output.join('')).join(','), {
+          sessionTimeout: sessionTimeout,
+          spinDelay: spinDelay,
+          retries: retries
+        });
+
+        clientWrapper.setClient(client);
+
+        client.on("connected", () => emitter.emit("connected"));
+        client.on("disconnected", () => emitter.emit("disconnected"));
+        client.on('state', (state: Object) => emitter.emit('state', state, client.getSessionId()));
+        client.on("expired", function () {
+          emitter.emit("expired");
+          connect();
+        });
+        emitter.emit('connecting');
+        client.connect();
+      });
+    }).on('error', function () {
+      emitter.emit("exhibitor_error");
+      connect();
+    });
+  };
+
+  connect();
 
   var pathManager: { [path: string]: Locator.FacetLocator } = {};
   function manager(path: string): Locator.FacetLocator {
@@ -168,7 +221,7 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters) 
       throw new TypeError("path must be a string");
     }
     if (path[0] !== "/") path = "/" + path;
-    pathManager[path] || (pathManager[path] = makeManagerForPath(client, path, emitter, dataExtractor, locatorTimeout));
+    pathManager[path] || (pathManager[path] = makeManagerForPath(clientWrapper, path, emitter, dataExtractor, locatorTimeout));
     return pathManager[path];
   }
 
@@ -177,6 +230,5 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters) 
       return (<any>emitter)[fnName].apply(emitter, arguments);
     }
   );
-
   return manager;
 }

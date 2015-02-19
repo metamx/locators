@@ -10,7 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "async": "^0.9.0",
-    "node-zookeeper-client": "^0.2.1"
+    "node-zookeeper-client": "^0.2.1",
+    "request": "^2.53.0"
   },
   "scripts": {
     "prepublish": "node_modules/.bin/tsc -m commonjs --noImplicitAny -d --outDir build src/*.ts",
