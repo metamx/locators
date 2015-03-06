@@ -39,7 +39,7 @@ export function simpleLocatorFactory(params: SimpleLocatorParameters) {
       return location;
     });
 
-    return () => Promise(null, locations[Math.floor(Math.random() * locations.length)])
+    return () => <Promise.Promise<Locator.Location>>Promise(locations[Math.floor(Math.random() * locations.length)])
   }
 
   return simpleLocator;

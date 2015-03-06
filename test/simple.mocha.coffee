@@ -8,14 +8,15 @@ describe 'Simple locator', ->
     simpleLocator = locator("localhost:8080")
 
     it "works", (done) ->
-      simpleLocator((err, location) ->
-        expect(err).to.not.exist
-        expect(location).to.deep.equal({
-          host: 'localhost'
-          port: 8080
-        })
-        done()
-      )
+      simpleLocator()
+        .then((location) ->
+          expect(location).to.deep.equal({
+            host: 'localhost'
+            port: 8080
+          })
+          done()
+        )
+        .done()
 
   describe 'full option function', ->
     locator = simpleLocatorFactory()
@@ -25,9 +26,8 @@ describe 'Simple locator', ->
     })
 
     it "works", (done) ->
-      simpleLocator((err, location) ->
-        expect(err).to.not.exist
-        for i in [1..20]
+      simpleLocator()
+        .then((location) ->
           if location.host is 'localhost'
             expect(location).to.deep.equal({
               host: 'localhost'
@@ -38,5 +38,6 @@ describe 'Simple locator', ->
               host: 'koalastothemax.com'
               port: 80
             })
-        done()
-      )
+          done()
+        )
+        .done()
