@@ -1,4 +1,6 @@
+/// <reference path="../typings/q/Q.d.ts" />
 "use strict";
+import Promise = require("q");
 
 import Locator = require("./common");
 
@@ -37,9 +39,7 @@ export function simpleLocatorFactory(params: SimpleLocatorParameters) {
       return location;
     });
 
-    return (callback) => {
-      callback(null, locations[Math.floor(Math.random() * locations.length)]);
-    };
+    return () => Promise(null, locations[Math.floor(Math.random() * locations.length)])
   }
 
   return simpleLocator;

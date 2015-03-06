@@ -84,6 +84,7 @@ getPool = (locator, callback) ->
 
 simpleExec = (cmd, done) ->
   exec(cmd, (err, stdout, stderr) ->
+    console.log(cmd);
     if err
       console.log(cmd)
       console.log('  stdout: ' + stdout)
@@ -109,6 +110,7 @@ describe 'Zookeeper locator', ->
         (callback) ->
           zookeeperLocator = zookeeperLocatorFactory({
             servers: 'localhost:2181/discovery'
+            timeout: 5000
           })
 
           zookeeperLocator.on 'newPool', (path, pool) ->
@@ -144,7 +146,7 @@ describe 'Zookeeper locator', ->
         expect(eventSeen).to.be.true
         done()
 
-    it "correct init run", (done) ->
+    it.only "correct init run", (done) ->
       getPool myServiceLocator, (err, locations) ->
         expect(err).to.not.exist
         expect(locations).to.deep.equal([

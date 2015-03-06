@@ -1,13 +1,26 @@
+/// <reference path="../typings/q/Q.d.ts" />
+"use strict";
+import Q = require("q");
+
 declare module Locator {
     interface Location {
         host: string;
         port?: number;
     }
-    interface Callback {
-        (err: Error, location?: Location): void;
+
+    interface ReturnedLocation {
+        address: string;
+        port: number;
     }
+
+    interface DataExtractor {
+        (data: string): Locator.Location;
+    }
+
     interface FacetLocator {
-        (fn: Callback): void;
+        (): Q.Promise<Location>;
+
+        // Event emitter extension
         addListener?(event: string, listener: Function): any;
         on?(event: string, listener: Function): any;
         once?(event: string, listener: Function): any;

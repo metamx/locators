@@ -1,5 +1,6 @@
 /// <reference path="../typings/node/node.d.ts" />
 /// <reference path="../typings/async/async.d.ts" />
+/// <reference path="../typings/q/Q.d.ts" />
 /// <reference path="../typings/node-zookeeper-client/node-zookeeper-client.d.ts" />
 "use strict";
 
@@ -8,6 +9,7 @@ import EventEmitterModule = require("events")
 import EventEmitter = EventEmitterModule.EventEmitter
 
 import async = require("async");
+import Promise = require("q");
 
 import zookeeper = require("node-zookeeper-client");
 import Client = zookeeper.Client;
@@ -150,9 +152,10 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
 }
 
 export interface ZookeeperLocatorParameters {
-  exhibitorUrl: string;
+  exhibitorUrl?: string;
+  servers?: string;
   dataExtractor: (data: string) => Locator.Location;
-  serverExtractor: (data: string) => string[];
+  serverExtractor?: (data: string) => string[];
   locatorTimeout: number;
   sessionTimeout: number;
   spinDelay: number;
@@ -160,11 +163,8 @@ export interface ZookeeperLocatorParameters {
 }
 
 export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters): Function {
-  if (!parameters.exhibitorUrl) {
-    throw new Error("need only one exhibitor url");
-  }
-
   var exhibitorUrl = parameters.exhibitorUrl;
+  var servers = parameters.servers;
   var dataExtractor = parameters.dataExtractor;
   var serverExtractor = parameters.serverExtractor;
   var locatorTimeout = parameters.locatorTimeout;
@@ -179,41 +179,72 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
   var emitter = new EventEmitter();
   var client: zookeeper.Client;
   var clientWrapper = new ClientWrapper();
-  var connect = function () {
-    http.get(exhibitorUrl, function(res: http.ClientResponse) {
-      var output: string[] = [];
-      res.setEncoding('utf8');
 
-      res.on('data', function (chunk: string) {
-        output.push(chunk);
+  if (servers) {
+    var connect = function () {
+      client = zookeeper.createClient(servers, {
+        sessionTimeout: sessionTimeout,
+        spinDelay: spinDelay,
+        retries: retries
       });
 
-      res.on('end', function () {
-        client = zookeeper.createClient(serverExtractor(output.join('')).join(','), {
-          sessionTimeout: sessionTimeout,
-          spinDelay: spinDelay,
-          retries: retries
-        });
+      clientWrapper.setClient(client);
 
-        clientWrapper.setClient(client);
-
-        client.on("connected", () => emitter.emit("connected"));
-        client.on("disconnected", () => emitter.emit("disconnected"));
-        client.on('state', (state: Object) => emitter.emit('state', state, client.getSessionId()));
-        client.on("expired", function () {
-          emitter.emit("expired");
-          connect();
-        });
-        emitter.emit('connecting');
-        client.connect();
+      client.on("connected", () => emitter.emit("connected"));
+      client.on("disconnected", () => emitter.emit("disconnected"));
+      client.on('state', (state: Object) => emitter.emit('state', state, client.getSessionId()));
+      client.on("expired", function () {
+        emitter.emit("expired");
+        connect();
       });
-    }).on('error', function () {
-      emitter.emit("exhibitor_error");
-      connect();
-    });
-  };
+      emitter.emit('connecting');
+      client.connect();
+    };
 
-  connect();
+    connect();
+
+  } else if (exhibitorUrl) {
+    var connect = function () {
+      http.get(exhibitorUrl, function(res: http.ClientResponse) {
+        var output: string[] = [];
+        res.setEncoding('utf8');
+
+        res.on('data', function (chunk: string) {
+          output.push(chunk);
+        });
+
+        res.on('end', function () {
+          client = zookeeper.createClient(serverExtractor(output.join('')).join(','), {
+            sessionTimeout: sessionTimeout,
+            spinDelay: spinDelay,
+            retries: retries
+          });
+
+          clientWrapper.setClient(client);
+
+          client.on("connected", () => emitter.emit("connected"));
+          client.on("disconnected", () => emitter.emit("disconnected"));
+          client.on('state', (state: Object) => emitter.emit('state', state, client.getSessionId()));
+          client.on("expired", function () {
+            emitter.emit("expired");
+            connect();
+          });
+          emitter.emit('connecting');
+          client.connect();
+        });
+      }).on('error', function () {
+        emitter.emit("exhibitor_error");
+        connect();
+      });
+    };
+
+    connect();
+
+  } else {
+    throw new Error("need exhibitor url or servers");
+  }
+
+
 
   var pathManager: { [path: string]: Locator.FacetLocator } = {};
   function manager(path: string): Locator.FacetLocator {
