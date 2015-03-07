@@ -12,9 +12,9 @@ export interface SimpleLocatorParameters {
 }
 
 export function simpleLocatorFactory(params: SimpleLocatorParameters) {
-  function simpleLocator(parameters: string): Locator.FacetLocator;
-  function simpleLocator(parameters: SimpleLocatorParameters): Locator.FacetLocator;
-  function simpleLocator(parameters: any): Locator.FacetLocator {
+  function simpleLocator(parameters: string): Locator.Locator;
+  function simpleLocator(parameters: SimpleLocatorParameters): Locator.Locator;
+  function simpleLocator(parameters: any): Locator.Locator {
     if (typeof parameters === "string") parameters = { resource: parameters };
     var resource: string = parameters.resource;
     var defaultPort: number = parameters.defaultPort;

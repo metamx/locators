@@ -30,9 +30,9 @@ function defaultDataExtractor(data: string): Location {
 }
 
 export function requestLocatorFactory(): Function {
-  function resourceLocator(parameters: string): Locator.FacetLocator;
-  function resourceLocator(parameters: RequestLocatorParameters): Locator.FacetLocator;
-  function resourceLocator(parameters: any): Locator.FacetLocator {
+  function resourceLocator(parameters: string): Locator.Locator;
+  function resourceLocator(parameters: RequestLocatorParameters): Locator.Locator;
+  function resourceLocator(parameters: any): Locator.Locator {
     if (typeof parameters === "string") parameters = { url: parameters };
     var url: string = parameters.url;
     var request: any;

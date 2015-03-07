@@ -17,7 +17,7 @@ declare module Locator {
         (data: string): Locator.Location;
     }
 
-    interface FacetLocator {
+    interface Locator {
         (): Q.Promise<Location>;
 
         // Event emitter extension
