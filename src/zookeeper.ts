@@ -133,6 +133,8 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
     clientWrapper.client.getChildren(path, onChange, onGetChildren);
   });
 
+  if (clientWrapper.client) clientWrapper.client.getChildren(path, onChange, onGetChildren);
+
   return function() {
     var deferred = <Promise.Deferred<Locator.Location>>Promise.defer();
 

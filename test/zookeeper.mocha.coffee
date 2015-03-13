@@ -299,6 +299,33 @@ describe 'Zookeeper locator', ->
           .done()
       )
 
+    describe "another locator after zkClient connects", ->
+      it "still functions for the same service", (done) ->
+        zookeeperLocator.once('connected', ->
+          anotherLocator = zookeeperLocator('my:service')
+          anotherLocator()
+            .then((location) ->
+              expect(location).to.exist
+              done()
+            )
+            .done()
+        )
+
+      it "still functions for a different service", (done) ->
+        zookeeperLocator.once('connected', ->
+          anotherLocator = zookeeperLocator('my:service2')
+          anotherLocator()
+            .then((location) ->
+              expect(location).not.to.exist
+            )
+            .catch((err) ->
+              expect(err.message).to.equal('Empty pool')
+              done()
+            )
+            .done()
+        )
+
+
   describe "ZK connection timeout", ->
     @timeout 5000
     zookeeperLocator = null
