@@ -183,7 +183,11 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
   var connect = function () {
     serverLocator()
       .then(function (location) {
-        client = zookeeper.createClient(location.host + ":" + location.port + path, {
+        var zookeeperServer = location.host;
+        if (location.port) zookeeperServer = zookeeperServer + ":" + location.port;
+        zookeeperServer = zookeeperServer + path;
+
+        client = zookeeper.createClient(zookeeperServer, {
           sessionTimeout: sessionTimeout,
           spinDelay: spinDelay,
           retries: retries
