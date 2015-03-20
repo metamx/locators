@@ -67,6 +67,7 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
   var next = -1;
   var pool: Locator.Location[] = null;
   var queue: Promise.Deferred<Locator.Location>[] = [];
+  var stale = false;
 
   function dispatch(deferred: Promise.Deferred<Locator.Location>) {
     if (!pool) {
@@ -123,20 +124,37 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
       .done();
   }
 
-  function onChange(event: Event) {
-    emitter.emit("change", path, event);
-    clientWrapper.client.getChildren(path, onChange, onGetChildren);
+  function onChildrenChange(event: Event) {
+    emitter.emit("children_change", path, event);
+    clientWrapper.client.getChildren(path, onChildrenChange, onGetChildren);
+  }
+
+  function onExists(error: Error, stat: zookeeper.Stat) {
+    if (stat) {
+      stale = false;
+      emitter.emit("path_found", path);
+      clientWrapper.client.getChildren(path, onChildrenChange, onGetChildren);
+    } else {
+      stale = true;
+      emitter.emit("path_not_found", path);
+      pool = [];
+      processQueue();
+    }
   }
 
   clientWrapper.emitter.on('new_client', function () {
     pool = null;
-    clientWrapper.client.getChildren(path, onChange, onGetChildren);
+    clientWrapper.client.exists(path, onExists);
   });
 
-  if (clientWrapper.client) clientWrapper.client.getChildren(path, onChange, onGetChildren);
-
+  if (clientWrapper.client) clientWrapper.client.exists(path, onExists);
+  var counter = 0;
   return function() {
     var deferred = <Promise.Deferred<Locator.Location>>Promise.defer();
+    if (stale) {
+      pool = null;
+      clientWrapper.client.exists(path, onExists);
+    }
 
     if (pool) {
       dispatch(deferred);

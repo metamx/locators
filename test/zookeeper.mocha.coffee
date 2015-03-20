@@ -80,6 +80,9 @@ getPool = (locator) ->
 
     locator()
       .then(action)
+      .catch((err) ->
+        deferred.reject(err)
+      )
       .done()
 
     return
@@ -98,11 +101,90 @@ simpleExec = (cmd, done) ->
   )
 
 describe 'Zookeeper locator', ->
+  zookeeperLocator = null
+  myServiceLocator = null
+  lastSeenPool = null
+
+  describe 'for non-existent service', ->
+    @timeout 5000
+
+    beforeEach (done) ->
+      async.series([
+        (callback) -> simpleExec('zkServer start', callback)
+        (callback) -> rmStar('/discovery/my:service', callback)
+        (callback) -> zkClient.remove('/discovery/my:service', -> callback())
+        (callback) ->
+          zookeeperLocator = zookeeperLocatorFactory({
+            serverLocator: simpleLocatorFactory()('localhost:2181')
+            path: '/discovery'
+            timeout: 5000
+          })
+
+          zookeeperLocator.on 'newPool', (path, pool) ->
+            expect(path).to.equal('/my:service')
+            lastSeenPool = pool
+            return
+
+          myServiceLocator = zookeeperLocator('my:service')
+          callback()
+      ], done)
+
+    afterEach (done) ->
+      simpleExec('zkServer stop', done)
+
+    it "fails on non-existent service", (done) ->
+      eventSeen = false
+      zookeeperLocator.once 'path_not_found', (path, err) ->
+        eventSeen = true
+        expect(path).to.equal('/my:service')
+        return
+
+      zookeeperLocator('my:service')()
+        .then((location) ->
+          expect(location).not.to.exist
+        )
+        .catch((err) ->
+          expect(err).to.exist
+          expect(err.message).to.equal('Empty pool')
+          expect(eventSeen, 'didnt see path_not_found error').to.be.true
+          expect(eventSeen).to.be.true
+          done()
+        )
+        .done()
+
+
+    it "recovers after it fails on non-existent service", (done) ->
+      eventSeen = false
+      zookeeperLocator.once 'path_not_found', (path, err) ->
+        eventSeen = true
+        expect(path).to.equal('/my:service')
+        return
+
+      zookeeperLocator('my:service')()
+        .then((location) ->
+          expect(location).not.to.exist
+        )
+        .catch((err) ->
+          expect(err).to.exist
+          expect(err.message).to.equal('Empty pool')
+          expect(eventSeen, 'didnt see path_not_found error').to.be.true
+
+          createNode('my:service', 'fake-guid-2-1', { address: '10.10.10.10', port: 8080 }, ->
+            zookeeperLocator('my:service')()
+              .then((location) ->
+                expect(location).to.deep.equal({ host: '10.10.10.10', port: 8080 })
+                done()
+              )
+              .catch((err) ->
+                expect(err).not.to.exist
+              )
+              .done()
+          )
+        )
+        .done()
+
   describe 'normal function', ->
     @timeout 5000
-    zookeeperLocator = null
-    myServiceLocator = null
-    lastSeenPool = null
 
     beforeEach (done) ->
       async.series([
@@ -132,27 +214,6 @@ describe 'Zookeeper locator', ->
 
     it "is memoized by path", ->
       expect(myServiceLocator).to.equal(zookeeperLocator('/my:service'))
-
-    it "fails on fake service", (done) ->
-      eventSeen = false
-      zookeeperLocator.once 'childListFail', (path, err) ->
-        eventSeen = true
-        expect(path).to.equal('/my:fake:service')
-        expect(err.message).to.equal('Exception: NO_NODE[-101]')
-        return
-
-      myFakeServiceLocator = zookeeperLocator('my:fake:service')
-      myFakeServiceLocator()
-        .then((location) ->
-          expect(location).not.to.exist
-        )
-        .catch((err) ->
-          expect(err).to.exist
-          expect(err.message).to.equal('Empty pool')
-          expect(eventSeen).to.be.true
-          done()
-        )
-        .done()
 
     it "correct init run", (done) ->
       getPool(myServiceLocator)
@@ -208,9 +269,7 @@ describe 'Zookeeper locator', ->
 
     it "works after removing the remaining nodes", (done) ->
       async.series([
-        (callback) -> removeNode('my:service', 'fake-guid-1-1', callback)
-        (callback) -> removeNode('my:service', 'fake-guid-1-2', callback)
-        (callback) -> removeNode('my:service', 'fake-guid-1-3', callback)
+        (callback) -> rmStar('/discovery/my:service', callback)
         (callback) -> setTimeout(callback, 100) # delay a little bit
       ], (err) ->
         myServiceLocator()
@@ -228,9 +287,7 @@ describe 'Zookeeper locator', ->
 
     it "works after adding nodes to an empty pool", (done) ->
       async.series([
-        (callback) -> removeNode('my:service', 'fake-guid-1-1', callback)
-        (callback) -> removeNode('my:service', 'fake-guid-1-2', callback)
-        (callback) -> removeNode('my:service', 'fake-guid-1-3', callback)
+        (callback) -> rmStar('/discovery/my:service', callback)
         (callback) -> createNode('my:service', 'fake-guid-1-4', { address: '10.10.10.40', port: 8080 }, callback)
         (callback) -> createNode('my:service', 'fake-guid-1-5', { address: '10.10.10.50', port: 8080 }, callback)
         (callback) -> setTimeout(callback, 100) # delay a little bit
@@ -244,6 +301,43 @@ describe 'Zookeeper locator', ->
               '10.10.10.50:8080'
             ])
             done()
+          )
+          .done()
+      )
+
+    it "works after one error state", (done) ->
+      async.series([
+        (callback) -> rmStar('/discovery/my:service', callback)
+        (callback) -> setTimeout(callback, 100) # delay a little bit
+      ], (err) ->
+        expect(err).not.to.exist
+
+        myServiceLocator()
+          .then((location) ->
+            expect(location).not.to.exist
+          )
+          .catch((err) ->
+            expect(err).to.exist
+            expect(err.message).to.equal('Empty pool')
+            expect(lastSeenPool.length).to.equal(0)
+
+            async.series([
+              (callback) -> createNode('my:service', 'fake-guid-1-4', { address: '10.10.10.40', port: 8080 }, callback)
+              (callback) -> createNode('my:service', 'fake-guid-1-5', { address: '10.10.10.50', port: 8080 }, callback)
+              (callback) -> setTimeout(callback, 100) # delay a little bit
+            ], (err) ->
+              expect(err).to.not.exist
+
+              getPool(myServiceLocator)
+                .then((locations) ->
+                  expect(locations).to.deep.equal([
+                    '10.10.10.40:8080'
+                    '10.10.10.50:8080'
+                  ])
+                  done()
+                )
+                .done()
+            )
           )
           .done()
       )
@@ -374,7 +468,7 @@ describe 'Zookeeper locator', ->
         (callback) -> simpleExec('zkServer start', callback)
         (callback) -> rmStar('/discovery/my:service', callback)
         (callback) -> createNode('my:service', 'fake-guid-1-1', { address: '10.10.10.10', port: 8080 }, callback)
-        (callback) -> setTimeout(callback, 100) # delay a little bit
+        (callback) -> setTimeout(callback, 1000) # delay a little bit
       ], (err) ->
         getPool(myServiceLocator)
           .then((locations) ->
