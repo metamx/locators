@@ -63,6 +63,7 @@ function defaultServerExtractor(data: string): string[] {
   return JSON.parse(data);
 }
 
+// TODO: turn manager into a class
 function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter: EventEmitter, dataExtractor: DataExtractor, locatorTimeout: number): Locator.Locator {
   var next = -1;
   var pool: Locator.Location[] = null;

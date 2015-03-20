@@ -2,7 +2,7 @@
 
 exec = require('child_process').exec
 Promise = require('q')
-async = require('async')
+async = require('async') # TODO remove async
 zookeeper = require('node-zookeeper-client')
 {CreateMode} = zookeeper
 
