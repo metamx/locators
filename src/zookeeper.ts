@@ -149,7 +149,7 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
   });
 
   if (clientWrapper.client) clientWrapper.client.exists(path, onExists);
-  var counter = 0;
+
   return function() {
     var deferred = <Promise.Deferred<Locator.Location>>Promise.defer();
     if (stale) {

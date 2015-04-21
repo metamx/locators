@@ -105,7 +105,7 @@ describe 'Zookeeper locator', ->
   myServiceLocator = null
   lastSeenPool = null
 
-  describe 'for non-existent service', ->
+  describe 'when locating non-existent service', ->
     @timeout 5000
 
     beforeEach (done) ->
@@ -183,7 +183,8 @@ describe 'Zookeeper locator', ->
         )
         .done()
 
-  describe 'normal function', ->
+
+  describe 'under normal condition', ->
     @timeout 5000
 
     beforeEach (done) ->
@@ -342,7 +343,7 @@ describe 'Zookeeper locator', ->
           .done()
       )
 
-    it "works after ZK disconnects serving the remainder from cache", (done) ->
+    it "works after ZK disconnects by serving the cached pool", (done) ->
       disconnectEventSeen = false
       zookeeperLocator.once 'disconnected', ->
         disconnectEventSeen = true
@@ -355,6 +356,7 @@ describe 'Zookeeper locator', ->
         expect(err).to.not.exist
         getPool(myServiceLocator)
           .then((locations) ->
+            expect(disconnectEventSeen).to.be.true
             expect(locations).to.deep.equal([
               '10.10.10.10:8080'
               '10.10.10.20:8080'
@@ -393,34 +395,57 @@ describe 'Zookeeper locator', ->
           .done()
       )
 
-    describe "another locator after zkClient connects", ->
-      it "still functions for the same service", (done) ->
-        zookeeperLocator.once('connected', ->
-          anotherLocator = zookeeperLocator('my:service')
-          anotherLocator()
-            .then((location) ->
-              expect(location).to.exist
-              done()
-            )
-            .done()
-        )
 
-      it "still functions for a different service", (done) ->
-        zookeeperLocator.once('connected', ->
-          anotherLocator = zookeeperLocator('my:service2')
-          anotherLocator()
-            .then((location) ->
-              expect(location).not.to.exist
-            )
-            .catch((err) ->
-              expect(err.message).to.equal('Empty pool')
-              done()
-            )
-            .done()
-        )
+  describe "another locator after zkClient connects", ->
+    beforeEach (done) ->
+      async.series([
+        (callback) -> simpleExec('zkServer start', callback)
+        (callback) -> rmStar('/discovery/my:service', callback)
+        (callback) -> createNode('my:service', 'fake-guid-1-1', { address: '10.10.10.10', port: 8080 }, callback)
+        (callback) -> createNode('my:service', 'fake-guid-1-2', { address: '10.10.10.20', port: 8080 }, callback)
+        (callback) -> createNode('my:service', 'fake-guid-1-3', { address: '10.10.10.30', port: 8080 }, callback)
+        (callback) ->
+          zookeeperLocator = zookeeperLocatorFactory({
+            serverLocator: simpleLocatorFactory()('localhost:2181')
+            path: '/discovery'
+            timeout: 5000
+          })
+          callback()
+      ], done)
+
+    afterEach (done) ->
+      simpleExec('zkServer stop', done)
+
+    it "functions for the same service", (done) ->
+      zookeeperLocator.once('connected', ->
+        anotherLocator = zookeeperLocator('my:service')
+        anotherLocator()
+          .then((location) ->
+            expect(location).to.exist
+            done()
+          )
+          .done()
+      )
+
+    it "functions for a different service", (done) ->
+      zookeeperLocator.once('connected', ->
+        anotherLocator = zookeeperLocator('my:service2')
+        anotherLocator()
+          .then((location) ->
+            expect(location).not.to.exist
+          )
+          .catch((err) ->
+            expect(err.message).to.equal('Empty pool')
+            done()
+          )
+          .done()
+      )
 
 
-  describe "ZK connection timeout", ->
+  describe "when ", ->
+
+
+  describe "when ZK connection times out", ->
     @timeout 5000
     zookeeperLocator = null
     myServiceLocator = null
