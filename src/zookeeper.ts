@@ -7,15 +7,15 @@
 import http = require("http")
 import EventEmitterModule = require("events")
 import EventEmitter = EventEmitterModule.EventEmitter
-
 import async = require("async");
 import Promise = require("q");
-
 import zookeeper = require("node-zookeeper-client");
 import Client = zookeeper.Client;
 var Exception = zookeeper.Exception;
 
 import Locator = require("./common");
+import LocatorException = require("./locatorException");
+
 
 interface ZookeeperJS {
   address: string;
@@ -215,18 +215,18 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
         });
 
         clientWrapper.setClient(client);
-        client.on("connected", () => emitter.emit("connected"));
-        client.on("disconnected", () => emitter.emit("disconnected"));
-        client.on('state', (state: Object) => emitter.emit('state', state, client.getSessionId()));
+        client.on("connected", () => emitter.emit(LocatorException.CODE["CONNECTED"]));
+        client.on("disconnected", () => emitter.emit(LocatorException.CODE["DISCONNECTED"]));
+        client.on('state', (state: Object) => emitter.emit(LocatorException.CODE["STATE_CHANGE"], state, client.getSessionId()));
         client.on("expired", function () {
-          emitter.emit("expired");
+          emitter.emit(LocatorException.CODE["EXPIRED"]);
           connect();
         });
-        emitter.emit('connecting');
+        emitter.emit(LocatorException.CODE["CONNECTING"]);
         client.connect();
       })
       .catch(function (err) {
-        emitter.emit("ZK_LOCATOR_ERROR", err);
+        emitter.emit(LocatorException.CODE["ZK_LOCATOR_ERROR"], err);
         connect();
       })
       .done();

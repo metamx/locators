@@ -70,7 +70,7 @@ describe 'Request locator', ->
         )
         .catch((err) ->
           expect(err).to.exist
-          expect(err.message).to.equal("BAD_RESPONSE")
+          expect(err.message).to.equal("bad response")
           done()
         )
         .done()

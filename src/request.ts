@@ -1,10 +1,12 @@
 /// <reference path="../typings/node/node.d.ts" />
 /// <reference path="../typings/q/Q.d.ts" />
 import Promise = require("q");
-import Locator = require("./common");
 import http = require("http");
 import https = require("https");
+
+import Locator = require("./common");
 import Location = Locator.Location;
+import LocatorException = require("./locatorException");
 
 export interface RequestLocatorParameters {
   url: string;
@@ -64,7 +66,7 @@ export function requestLocatorFactory(): Function {
           var result = output.join('');
           deferred.resolve(dataExtractor(result));
         } else {
-          deferred.reject(new Error("BAD_RESPONSE"));
+          deferred.reject(LocatorException.create("BAD_RESPONSE"));
         }
       });
     }).on('error', function (err: Error) {
