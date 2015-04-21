@@ -1,5 +1,7 @@
 /// <reference path="../typings/node/node.d.ts" />
 /// <reference path="../typings/q/Q.d.ts" />
+"use strict";
+
 import Promise = require("q");
 import http = require("http");
 import https = require("https");
