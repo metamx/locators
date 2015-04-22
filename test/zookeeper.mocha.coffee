@@ -8,6 +8,7 @@ zookeeper = require('node-zookeeper-client')
 
 { simpleLocatorFactory } = require('../build/simple')
 { zookeeperLocatorFactory } = require('../build/zookeeper')
+LocatorException = require('../build/locatorException')
 
 zkClient = zookeeper.createClient(
   'localhost:2181',
@@ -120,7 +121,7 @@ describe 'Zookeeper locator', ->
             timeout: 5000
           })
 
-          zookeeperLocator.on 'newPool', (path, pool) ->
+          zookeeperLocator.on LocatorException.CODE["NEW_POOL"], (path, pool) ->
             expect(path).to.equal('/my:service')
             lastSeenPool = pool
             return
@@ -134,7 +135,7 @@ describe 'Zookeeper locator', ->
 
     it "fails on non-existent service", (done) ->
       eventSeen = false
-      zookeeperLocator.once 'path_not_found', (path, err) ->
+      zookeeperLocator.once LocatorException.CODE["PATH_NOT_FOUND"], (path, err) ->
         eventSeen = true
         expect(path).to.equal('/my:service')
         return
@@ -145,7 +146,7 @@ describe 'Zookeeper locator', ->
         )
         .catch((err) ->
           expect(err).to.exist
-          expect(err.message).to.equal('Empty pool')
+          expect(err.message).to.equal(LocatorException.CODE["EMPTY_POOL"])
           expect(eventSeen, 'didnt see path_not_found error').to.be.true
           expect(eventSeen).to.be.true
           done()
@@ -155,7 +156,7 @@ describe 'Zookeeper locator', ->
 
     it "recovers after it fails on non-existent service", (done) ->
       eventSeen = false
-      zookeeperLocator.once 'path_not_found', (path, err) ->
+      zookeeperLocator.once LocatorException.CODE["PATH_NOT_FOUND"], (path, err) ->
         eventSeen = true
         expect(path).to.equal('/my:service')
         return
@@ -166,7 +167,7 @@ describe 'Zookeeper locator', ->
         )
         .catch((err) ->
           expect(err).to.exist
-          expect(err.message).to.equal('Empty pool')
+          expect(err.message).to.equal(LocatorException.CODE["EMPTY_POOL"])
           expect(eventSeen, 'didnt see path_not_found error').to.be.true
 
           createNode('my:service', 'fake-guid-2-1', { address: '10.10.10.10', port: 8080 }, ->
@@ -201,7 +202,7 @@ describe 'Zookeeper locator', ->
             timeout: 5000
           })
 
-          zookeeperLocator.on 'newPool', (path, pool) ->
+          zookeeperLocator.on LocatorException.CODE["NEW_POOL"], (path, pool) ->
             expect(path).to.equal('/my:service')
             lastSeenPool = pool
             return
@@ -279,7 +280,7 @@ describe 'Zookeeper locator', ->
           )
           .catch((err) ->
             expect(err).to.exist
-            expect(err.message).to.equal('Empty pool')
+            expect(err.message).to.equal(LocatorException.CODE["EMPTY_POOL"])
             expect(lastSeenPool.length).to.equal(0)
             done()
           )
@@ -319,7 +320,7 @@ describe 'Zookeeper locator', ->
           )
           .catch((err) ->
             expect(err).to.exist
-            expect(err.message).to.equal('Empty pool')
+            expect(err.message).to.equal(LocatorException.CODE["EMPTY_POOL"])
             expect(lastSeenPool.length).to.equal(0)
 
             async.series([
@@ -435,14 +436,11 @@ describe 'Zookeeper locator', ->
             expect(location).not.to.exist
           )
           .catch((err) ->
-            expect(err.message).to.equal('Empty pool')
+            expect(err.message).to.equal(LocatorException.CODE["EMPTY_POOL"])
             done()
           )
           .done()
       )
-
-
-  describe "when ", ->
 
 
   describe "when ZK connection times out", ->

@@ -37,7 +37,7 @@ class ClientWrapper {
 
   public setClient(client: Client) {
     this.client = client;
-    this.emitter.emit('new_client');
+    this.emitter.emit('NEW_CLIENT');
   }
 }
 
@@ -78,7 +78,7 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
       next++;
       return deferred.resolve(pool[next % pool.length]);
     } else {
-      return deferred.reject(new Error("Empty pool"));
+      return deferred.reject(new Error(LocatorException.CODE["EMPTY_POOL"]));
     }
   }
 
@@ -90,10 +90,9 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
 
   function onGetChildren(err: Error, children: string[]) {
     if (err) {
-      emitter.emit("childListFail", path, err);
+      emitter.emit(LocatorException.CODE["FAILED_TO_GET_CHILDREN"], path, err);
       pool = [];
       processQueue();
-      emitter.emit("emptyPool", new Error("Empty pool"));
       return;
     }
 
@@ -103,7 +102,7 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
       clientWrapper.client.getData(path + "/" + child, (err, data) => {
         if (err) {
           if (err.getCode() !== Exception.NO_NODE) {
-            emitter.emit("nodeDataFail", path, err);
+            emitter.emit(LocatorException.CODE["FAILED_TO_GET_CHILD_INFO"], path, err);
           }
 
           deferred.resolve(null);
@@ -119,31 +118,31 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
     Promise.all(promises)
       .then((newPool) => {
         pool = newPool.filter(Boolean);
-        emitter.emit("newPool", path, pool);
+        emitter.emit(LocatorException.CODE["NEW_POOL"], path, pool);
         processQueue();
       })
       .done();
   }
 
   function onChildrenChange(event: Event) {
-    emitter.emit("children_change", path, event);
+    emitter.emit(LocatorException.CODE["CHILDREN_CHANGED"], path, event);
     clientWrapper.client.getChildren(path, onChildrenChange, onGetChildren);
   }
 
   function onExists(error: Error, stat: zookeeper.Stat) {
     if (stat) {
       stale = false;
-      emitter.emit("path_found", path);
+      emitter.emit(LocatorException.CODE["PATH_FOUND"], path);
       clientWrapper.client.getChildren(path, onChildrenChange, onGetChildren);
     } else {
       stale = true;
-      emitter.emit("path_not_found", path);
+      emitter.emit(LocatorException.CODE["PATH_NOT_FOUND"], path);
       pool = [];
       processQueue();
     }
   }
 
-  clientWrapper.emitter.on('new_client', function () {
+  clientWrapper.emitter.on('NEW_CLIENT', function () {
     pool = null;
     clientWrapper.client.exists(path, onExists);
   });
