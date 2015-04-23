@@ -64,19 +64,39 @@ function defaultServerExtractor(data: string): string[] {
 }
 
 // TODO: turn manager into a class
-function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter: EventEmitter, dataExtractor: DataExtractor, locatorTimeout: number): Locator.Locator {
+function makeManagerForPath(
+  clientWrapper: ClientWrapper,
+  path: string,
+  emitter: EventEmitter,
+  dataExtractor: DataExtractor,
+  locatorTimeout: number,
+  strict: boolean
+): Locator.Locator {
   var next = -1;
   var pool: Locator.Location[] = null;
+  var cachedPool: Locator.Location[] = null;
   var queue: Promise.Deferred<Locator.Location>[] = [];
   var stale = false;
 
+  function setPool(newPool: Locator.Location[]) {
+    pool = newPool;
+    if (!cachedPool || (newPool && newPool.length)) cachedPool = newPool;
+    return;
+  }
+
+  function getPool(): Locator.Location[] {
+    if (strict || (pool && pool.length)) return pool;
+    if (cachedPool && cachedPool.length) return cachedPool;
+    return pool;
+  }
+
   function dispatch(deferred: Promise.Deferred<Locator.Location>) {
-    if (!pool) {
-      throw new Error("get next called on loading pool");
-    }
-    if (pool.length) {
+    var chosenPool = getPool();
+    if (!chosenPool) throw new Error("get next called on loading pool");
+
+    if (chosenPool.length) {
       next++;
-      return deferred.resolve(pool[next % pool.length]);
+      return deferred.resolve(chosenPool[next % chosenPool.length]);
     } else {
       return deferred.reject(new Error(LocatorException.CODE["EMPTY_POOL"]));
     }
@@ -91,7 +111,7 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
   function onGetChildren(err: Error, children: string[]) {
     if (err) {
       emitter.emit(LocatorException.CODE["FAILED_TO_GET_CHILDREN"], path, err);
-      pool = [];
+      setPool([]);
       processQueue();
       return;
     }
@@ -117,7 +137,7 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
 
     Promise.all(promises)
       .then((newPool) => {
-        pool = newPool.filter(Boolean);
+        setPool(newPool.filter(Boolean));
         emitter.emit(LocatorException.CODE["NEW_POOL"], path, pool);
         processQueue();
       })
@@ -137,13 +157,13 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
     } else {
       stale = true;
       emitter.emit(LocatorException.CODE["PATH_NOT_FOUND"], path);
-      pool = [];
+      setPool([]);
       processQueue();
     }
   }
 
   clientWrapper.emitter.on('NEW_CLIENT', function () {
-    pool = null;
+    setPool(null);
     clientWrapper.client.exists(path, onExists);
   });
 
@@ -152,7 +172,7 @@ function makeManagerForPath(clientWrapper: ClientWrapper, path: string, emitter:
   return function() {
     var deferred = <Promise.Deferred<Locator.Location>>Promise.defer();
     if (stale) {
-      pool = null;
+      setPool(null);
       clientWrapper.client.exists(path, onExists);
     }
 
@@ -182,6 +202,7 @@ export interface ZookeeperLocatorParameters {
   sessionTimeout: number;
   spinDelay: number;
   retries: number;
+  strict?: boolean;
 }
 
 export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters): Function {
@@ -192,9 +213,11 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
   var sessionTimeout = parameters.sessionTimeout;
   var spinDelay = parameters.spinDelay;
   var retries = parameters.retries;
+  var strict = parameters.strict;
 
   dataExtractor || (dataExtractor = defaultDataExtractor);
   locatorTimeout || (locatorTimeout = 2000);
+  (typeof strict !== 'undefined' && strict !== null) || (strict = true);
 
   var emitter = new EventEmitter();
   var client: zookeeper.Client;
@@ -239,7 +262,14 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
       throw new TypeError("path must be a string");
     }
     if (path[0] !== "/") path = "/" + path;
-    pathManager[path] || (pathManager[path] = makeManagerForPath(clientWrapper, path, emitter, dataExtractor, locatorTimeout));
+    pathManager[path] || (pathManager[path] = makeManagerForPath(
+      clientWrapper,
+      path,
+      emitter,
+      dataExtractor,
+      locatorTimeout,
+      strict
+    ));
     return pathManager[path];
   }
 
