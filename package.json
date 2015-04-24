@@ -24,12 +24,13 @@
     "dts-bundle": "^0.2.0",
     "gulp": "3.6.x",
     "gulp-coffee": "1.4.x",
-    "gulp-watch": "0.6.x",
     "gulp-grep-stream": "0.0.*",
     "gulp-load-plugins": "0.5.*",
     "gulp-mocha": "0.4.x",
     "gulp-util": "2.2.x",
+    "gulp-watch": "0.6.x",
     "mocha": "^2.0.1",
+    "nock": "^1.6.1",
     "typescript": "^1.4.0"
   }
 }

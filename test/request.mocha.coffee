@@ -85,7 +85,7 @@ describe 'Request locator', ->
         )
         .catch((err) ->
           expect(err).to.exist
-          expect(err.message).to.equal('Nock: Not allow net connect for \"www.test-endpoint.com:8080\"')
+          expect(err.message).to.equal('Nock: Not allow net connect for \"www.test-endpoint.com:8080/list\"')
           done()
         )
         .done()
