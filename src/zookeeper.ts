@@ -217,6 +217,8 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
 
   dataExtractor || (dataExtractor = defaultDataExtractor);
   locatorTimeout || (locatorTimeout = 2000);
+  sessionTimeout || (sessionTimeout = 10000);
+  retries || (retries = 0);
   (typeof strict !== 'undefined' && strict !== null) || (strict = true);
 
   var emitter = new EventEmitter();
@@ -237,8 +239,23 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
         });
 
         clientWrapper.setClient(client);
-        client.on("connected", () => emitter.emit(LocatorException.CODE["CONNECTED"]));
-        client.on("disconnected", () => emitter.emit(LocatorException.CODE["DISCONNECTED"]));
+
+        var disconnectedHandler: NodeJS.Timer = null; // NodeJS.Timer is coming from the definitely typed.
+
+        client.on("connected", function () {
+          emitter.emit(LocatorException.CODE["CONNECTED"]);
+
+          if (disconnectedHandler) clearTimeout(disconnectedHandler);
+        });
+        client.on("disconnected", function (count: number) {
+          emitter.emit(LocatorException.CODE["DISCONNECTED"]);
+
+          disconnectedHandler = setTimeout(
+            function () {
+              client.emit("expired");
+            }
+          , sessionTimeout);
+        });
         client.on('state', (state: Object) => emitter.emit(LocatorException.CODE["STATE_CHANGE"], state, client.getSessionId()));
         client.on("expired", function () {
           emitter.emit(LocatorException.CODE["EXPIRED"]);

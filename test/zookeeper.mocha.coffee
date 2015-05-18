@@ -595,3 +595,47 @@ describe 'Zookeeper locator', ->
             done()
           )
           .done()
+
+  describe "when ZK server goes down", ->
+    # start the server
+    # connect client
+    # stop the server
+    # should fire disconnected event
+    # wait for some time
+    # should fire expired event
+
+    @timeout 5000
+
+    it "zk client expires after sessionTimeout", (done) ->
+      async.series [
+        (callback) -> simpleExec('zkServer start', callback)
+        (callback) -> rmStar('/discovery/my:service', callback)
+        (callback) -> createNode('my:service', 'fake-guid-1-1', { address: '10.10.10.10', port: 8080 }, callback)
+        (callback) -> setTimeout(callback, 1000) # delay a little bit
+      ], (err) ->
+        start = new Date()
+
+        zookeeperLocator = zookeeperLocatorFactory({
+          serverLocator: simpleLocatorFactory()('localhost:2181')
+          path: '/discovery'
+          sessionTimeout: 2000
+          retries: 0
+        })
+        myServiceLocator = zookeeperLocator('my:service')
+
+        getPool(myServiceLocator)
+          .then((locations) ->
+            expect(locations).to.deep.equal([
+              '10.10.10.10:8080'
+            ])
+
+            simpleExec('zkServer stop', ->
+              zookeeperLocator.on(LocatorException.CODE["DISCONNECTED"], ->
+
+                zookeeperLocator.on(LocatorException.CODE["EXPIRED"], ->
+                  done()
+                )
+              )
+            )
+          )
+          .done()
