@@ -253,6 +253,7 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
           disconnectedHandler = setTimeout(
             function () {
               client.emit("expired");
+              client.close();
             }
           , sessionTimeout);
         });
