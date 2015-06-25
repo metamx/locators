@@ -19,6 +19,9 @@ zkClient = zookeeper.createClient(
   }
 )
 
+# todo: set this to the path to your zkServer command to run tests
+zkServerCommandPath = 'zkServer'
+
 rmStar = (path, callback) ->
   zkClient.getChildren(path, (err, children) ->
     if err
@@ -111,7 +114,7 @@ describe 'Zookeeper locator', ->
 
     beforeEach (done) ->
       async.series([
-        (callback) -> simpleExec('zkServer start', callback)
+        (callback) -> simpleExec(zkServerCommandPath + ' start', callback)
         (callback) -> rmStar('/discovery/my:service', callback)
         (callback) -> zkClient.remove('/discovery/my:service', -> callback())
         (callback) ->
@@ -131,7 +134,7 @@ describe 'Zookeeper locator', ->
       ], done)
 
     afterEach (done) ->
-      simpleExec('zkServer stop', done)
+      simpleExec(zkServerCommandPath + ' stop', done)
 
     it "fails on non-existent service", (done) ->
       eventSeen = false
@@ -190,7 +193,7 @@ describe 'Zookeeper locator', ->
 
     beforeEach (done) ->
       async.series([
-        (callback) -> simpleExec('zkServer start', callback)
+        (callback) -> simpleExec(zkServerCommandPath + ' start', callback)
         (callback) -> rmStar('/discovery/my:service', callback)
         (callback) -> createNode('my:service', 'fake-guid-1-1', { address: '10.10.10.10', port: 8080 }, callback)
         (callback) -> createNode('my:service', 'fake-guid-1-2', { address: '10.10.10.20', port: 8080 }, callback)
@@ -198,7 +201,7 @@ describe 'Zookeeper locator', ->
       ], done)
 
     afterEach (done) ->
-      simpleExec('zkServer stop', done)
+      simpleExec(zkServerCommandPath + ' stop', done)
 
     describe 'common', ->
       beforeEach ->
@@ -352,7 +355,7 @@ describe 'Zookeeper locator', ->
           return
 
         async.series([
-          (callback) -> simpleExec('zkServer stop', callback)
+          (callback) -> simpleExec(zkServerCommandPath + ' stop', callback)
           (callback) -> setTimeout(callback, 100) # delay a little bit
         ], (err) ->
           expect(err).to.not.exist
@@ -377,7 +380,7 @@ describe 'Zookeeper locator', ->
           return
 
         async.series([
-          (callback) -> simpleExec('zkServer start', callback)
+          (callback) -> simpleExec(zkServerCommandPath + ' start', callback)
           (callback) -> createNode('my:service', 'fake-guid-1-7', { address: '10.10.10.40', port: 8080 }, callback)
           (callback) -> setTimeout(callback, 100) # delay a little bit
         ], (err) ->
@@ -494,7 +497,7 @@ describe 'Zookeeper locator', ->
   describe "another locator after zkClient connects", ->
     beforeEach (done) ->
       async.series([
-        (callback) -> simpleExec('zkServer start', callback)
+        (callback) -> simpleExec(zkServerCommandPath + ' start', callback)
         (callback) -> rmStar('/discovery/my:service', callback)
         (callback) -> createNode('my:service', 'fake-guid-1-1', { address: '10.10.10.10', port: 8080 }, callback)
         (callback) -> createNode('my:service', 'fake-guid-1-2', { address: '10.10.10.20', port: 8080 }, callback)
@@ -509,7 +512,7 @@ describe 'Zookeeper locator', ->
       ], done)
 
     afterEach (done) ->
-      simpleExec('zkServer stop', done)
+      simpleExec(zkServerCommandPath + ' stop', done)
 
     it "functions for the same service", (done) ->
       zookeeperLocator.once('connected', ->
@@ -552,7 +555,7 @@ describe 'Zookeeper locator', ->
       done()
 
     afterEach (done) ->
-      simpleExec('zkServer stop', done)
+      simpleExec(zkServerCommandPath + ' stop', done)
 
     it "times out after some time", (done) ->
       start = new Date()
@@ -582,7 +585,7 @@ describe 'Zookeeper locator', ->
 
     it "picks up after server start", (done) ->
       async.series [
-        (callback) -> simpleExec('zkServer start', callback)
+        (callback) -> simpleExec(zkServerCommandPath + ' start', callback)
         (callback) -> rmStar('/discovery/my:service', callback)
         (callback) -> createNode('my:service', 'fake-guid-1-1', { address: '10.10.10.10', port: 8080 }, callback)
         (callback) -> setTimeout(callback, 1000) # delay a little bit
@@ -607,8 +610,9 @@ describe 'Zookeeper locator', ->
     @timeout 5000
 
     it "zk client expires after sessionTimeout", (done) ->
+      this.timeout(12000);
       async.series [
-        (callback) -> simpleExec('zkServer start', callback)
+        (callback) -> simpleExec(zkServerCommandPath + ' start', callback)
         (callback) -> rmStar('/discovery/my:service', callback)
         (callback) -> createNode('my:service', 'fake-guid-1-1', { address: '10.10.10.10', port: 8080 }, callback)
         (callback) -> setTimeout(callback, 1000) # delay a little bit
@@ -629,11 +633,20 @@ describe 'Zookeeper locator', ->
               '10.10.10.10:8080'
             ])
 
-            simpleExec('zkServer stop', ->
+            simpleExec(zkServerCommandPath + ' stop', ->
               zookeeperLocator.on(LocatorException.CODE["DISCONNECTED"], ->
-
+                ctr = 0
+                zookeeperLocator.on(LocatorException.CODE["CONNECTED"], ->
+                  ctr++
+                )
                 zookeeperLocator.on(LocatorException.CODE["EXPIRED"], ->
-                  done()
+                  simpleExec(zkServerCommandPath + ' start', ->
+
+                    setTimeout(->
+                      expect(ctr).to.equal(1)
+                      done()
+                    , 3000)
+                  )
                 )
               )
             )
