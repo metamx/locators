@@ -253,6 +253,9 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
           disconnectedHandler = setTimeout(
             function () {
               client.close();
+              
+              // further delaying the emitt of 'expired' event seems to avoid
+              // intermittent errors thrown by node-zookeeper-client
               setTimeout(function () {
                 client.emit("expired");
               }, 1000);
