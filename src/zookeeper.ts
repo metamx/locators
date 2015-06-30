@@ -255,7 +255,7 @@ export function zookeeperLocatorFactory(parameters: ZookeeperLocatorParameters):
               client.close();
               setTimeout(function () {
                 client.emit("expired");
-              },1000)
+              }, 1000);
             }
           , sessionTimeout);
         });
