@@ -5,13 +5,34 @@ gulp = require 'gulp'
 $ = require('gulp-load-plugins')()
 spawn = require('child_process').spawn
 
+ts = require('gulp-typescript')
+tsd = require('gulp-tsd');
+merge = require('merge2')
+
 # Compile jobs
 path =
   src: 'src/**/*.ts'
+  typings: 'typings/**/*.ts'
   test: 'test/**/*.coffee'
 
 
+gulp.task('tsd', ->
+  gulp.src('./gulp_tsd.json').pipe(tsd())
+)
+gulp.task('compile', ['tsd'], ->
+  tsResult = gulp.src(['src/**/*.ts','typings/**/*.ts', 'typings_custom/*.ts'])
+    .pipe(ts({
+      declaration: true,
+      noImplicitAny: true,
+      target: 'ES5',
+      module: 'commonjs'
+  }))
 
+  return merge([
+    tsResult.dts.pipe(gulp.dest('build')),
+    tsResult.js.pipe(gulp.dest('build'))
+  ])
+)
 
 # Main jobs
 gulp.task('test', ->
