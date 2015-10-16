@@ -3,7 +3,6 @@
 // Definitions by: Vadim Ogievetsky <https://github.com/borisyankov/>
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
 
-/// <reference path="../node/node.d.ts" />
 
 declare module "node-zookeeper-client" {
     import events = require("events");
