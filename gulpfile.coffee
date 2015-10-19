@@ -7,6 +7,7 @@ spawn = require('child_process').spawn
 
 ts = require('gulp-typescript')
 tsd = require('gulp-tsd');
+tslint = require('gulp-tslint');
 merge = require('merge2')
 
 # Compile jobs
@@ -19,8 +20,15 @@ path =
 gulp.task('tsd', ->
   gulp.src('./gulp_tsd.json').pipe(tsd())
 )
-gulp.task('compile', ['tsd'], ->
+
+gulp.task('tslint', ->
+  gulp.src(['src/**/*ts'])
+    .pipe(tslint())
+    .pipe(tslint.report('prose'))
+)
+gulp.task('compile', ['tsd', 'tslint'], ->
   tsResult = gulp.src(['src/**/*.ts','typings/**/*.ts', 'typings_custom/*.ts'])
+
     .pipe(ts({
       declaration: true,
       noImplicitAny: true,

@@ -1,7 +1,7 @@
 
-import http = require("http")
-import EventEmitterModule = require("events")
-import EventEmitter = EventEmitterModule.EventEmitter
+import http = require("http");
+import EventEmitterModule = require("events");
+import EventEmitter = EventEmitterModule.EventEmitter;
 import async = require("async");
 import Promise = require("q");
 import zookeeper = require("node-zookeeper-client");
@@ -13,31 +13,31 @@ import LocatorException = require("./locatorException");
 
 
 interface ZookeeperJS {
-  address: string;
-  port: number;
+  address : string;
+  port : number;
 }
 
 export interface DataExtractor {
-  (data:string): Location;
+  (data : string) : Location;
 }
 
 class ClientWrapper {
-  public client:Client;
-  public emitter:EventEmitter;
+  public client : Client;
+  public emitter : EventEmitter;
 
   constructor() {
     this.emitter = new EventEmitter();
     this.client = null;
   }
 
-  public setClient(client:Client) {
+  public setClient(client : Client) {
     this.client = client;
     this.emitter.emit('NEW_CLIENT');
   }
 }
 
-function defaultDataExtractor(data:string):Location {
-  var zkJS:ZookeeperJS;
+function defaultDataExtractor(data : string) : Location {
+  var zkJS : ZookeeperJS;
   try {
     zkJS = JSON.parse(data);
   } catch (e) {
@@ -54,38 +54,46 @@ function defaultDataExtractor(data:string):Location {
   };
 }
 
-function defaultServerExtractor(data:string):string[] {
+function defaultServerExtractor(data : string) : string[] {
   return JSON.parse(data);
 }
 
 // TODO: turn manager into a class
-function makeManagerForPath(clientWrapper:ClientWrapper,
-                            path:string,
-                            emitter:EventEmitter,
-                            dataExtractor:DataExtractor,
-                            locatorTimeout:number,
-                            strict:boolean):Locator {
+function makeManagerForPath(clientWrapper : ClientWrapper,
+                            path : string,
+                            emitter : EventEmitter,
+                            dataExtractor : DataExtractor,
+                            locatorTimeout : number,
+                            strict : boolean) : Locator {
   var next = -1;
-  var pool:Location[] = null;
-  var cachedPool:Location[] = null;
-  var queue:Promise.Deferred<Location>[] = [];
+  var pool : Location[] = null;
+  var cachedPool : Location[] = null;
+  var queue : Promise.Deferred<Location>[] = [];
   var stale = false;
 
-  function setPool(newPool:Location[]) {
+  function setPool(newPool : Location[]) {
     pool = newPool;
-    if (!cachedPool || (newPool && newPool.length)) cachedPool = newPool;
+    if (!cachedPool || (newPool && newPool.length)) {
+      cachedPool = newPool;
+    }
     return;
   }
 
-  function getPool():Location[] {
-    if (strict || (pool && pool.length)) return pool;
-    if (cachedPool && cachedPool.length) return cachedPool;
+  function getPool() : Location[] {
+    if (strict || (pool && pool.length)) {
+      return pool;
+    }
+    if (cachedPool && cachedPool.length) {
+      return cachedPool;
+    }
     return pool;
   }
 
-  function dispatch(deferred:Promise.Deferred<Location>) {
+  function dispatch(deferred : Promise.Deferred<Location>) {
     var chosenPool = getPool();
-    if (!chosenPool) throw new Error("get next called on loading pool");
+    if (!chosenPool) {
+      throw new Error("get next called on loading pool");
+    }
 
     if (chosenPool.length) {
       next++;
@@ -101,7 +109,7 @@ function makeManagerForPath(clientWrapper:ClientWrapper,
     }
   }
 
-  function onGetChildren(err:Error, children:string[]) {
+  function onGetChildren(err : Error, children : string[]) {
     if (err) {
       emitter.emit(LocatorException.CODE["FAILED_TO_GET_CHILDREN"], path, err);
       setPool([]);
@@ -110,12 +118,12 @@ function makeManagerForPath(clientWrapper:ClientWrapper,
     }
 
     var promises = children.map(function (child) {
-      var deferred = <Promise.Deferred<Location>>Promise.defer();
+      var deferred = Promise.defer<Location>();
 
-      clientWrapper.client.getData(path + "/" + child, (err, data) => {
-        if (err) {
-          if (err.getCode() !== Exception.NO_NODE) {
-            emitter.emit(LocatorException.CODE["FAILED_TO_GET_CHILD_INFO"], path, err);
+      clientWrapper.client.getData(path + "/" + child, (_err, data) => {
+        if (_err) {
+          if (_err.getCode() !== Exception.NO_NODE) {
+            emitter.emit(LocatorException.CODE["FAILED_TO_GET_CHILD_INFO"], path, _err);
           }
 
           deferred.resolve(null);
@@ -137,12 +145,12 @@ function makeManagerForPath(clientWrapper:ClientWrapper,
         .done();
   }
 
-  function onChildrenChange(event:Event) {
+  function onChildrenChange(event : Event) {
     emitter.emit(LocatorException.CODE["CHILDREN_CHANGED"], path, event);
     clientWrapper.client.getChildren(path, onChildrenChange, onGetChildren);
   }
 
-  function onExists(error:Error, stat:zookeeper.Stat) {
+  function onExists(error : Error, stat : zookeeper.Stat) {
     if (stat) {
       stale = false;
       emitter.emit(LocatorException.CODE["PATH_FOUND"], path);
@@ -155,15 +163,17 @@ function makeManagerForPath(clientWrapper:ClientWrapper,
     }
   }
 
-  clientWrapper.emitter.on('NEW_CLIENT', function () {
+  clientWrapper.emitter.on('NEW_CLIENT', () => {
     setPool(null);
     clientWrapper.client.exists(path, onExists);
   });
 
-  if (clientWrapper.client) clientWrapper.client.exists(path, onExists);
+  if (clientWrapper.client) {
+    clientWrapper.client.exists(path, onExists);
+  }
 
   return function () {
-    var deferred = <Promise.Deferred<Location>>Promise.defer();
+    var deferred = Promise.defer<Location>();
     if (stale) {
       setPool(null);
       clientWrapper.client.exists(path, onExists);
@@ -188,17 +198,17 @@ function makeManagerForPath(clientWrapper:ClientWrapper,
 }
 
 export interface ZookeeperLocatorParameters {
-  serverLocator: Locator;
-  path: string;
-  dataExtractor: (data:string) => Location;
-  locatorTimeout: number;
-  sessionTimeout: number;
-  spinDelay: number;
-  retries: number;
-  strict?: boolean;
+  serverLocator : Locator;
+  path : string;
+  dataExtractor : (data : string) => Location;
+  locatorTimeout : number;
+  sessionTimeout : number;
+  spinDelay : number;
+  retries : number;
+  strict? : boolean;
 }
 
-export function zookeeperLocatorFactory(parameters:ZookeeperLocatorParameters):Function {
+export function zookeeperLocatorFactory(parameters : ZookeeperLocatorParameters) : Function {
   var serverLocator = parameters.serverLocator;
   var path = parameters.path;
   var dataExtractor = parameters.dataExtractor;
@@ -208,21 +218,26 @@ export function zookeeperLocatorFactory(parameters:ZookeeperLocatorParameters):F
   var retries = parameters.retries;
   var strict = parameters.strict;
 
-  dataExtractor || (dataExtractor = defaultDataExtractor);
-  locatorTimeout || (locatorTimeout = 2000);
-  sessionTimeout || (sessionTimeout = 10000);
-  retries || (retries = 0);
-  (typeof strict !== 'undefined' && strict !== null) || (strict = true);
+  dataExtractor = dataExtractor ? dataExtractor : defaultDataExtractor;
+  locatorTimeout = locatorTimeout ? locatorTimeout : 2000;
+  sessionTimeout = sessionTimeout ? sessionTimeout : 10000;
+  retries = retries ? retries : 0;
+
+  if (!(typeof strict !== 'undefined' && strict !== null)) {
+    strict = true;
+  }
 
   var emitter = new EventEmitter();
-  var client:zookeeper.Client;
+  var client : zookeeper.Client;
   var clientWrapper = new ClientWrapper();
 
   var connect = function () {
     serverLocator()
         .then(function (location) {
           var zookeeperServer = location.host;
-          if (location.port) zookeeperServer = zookeeperServer + ":" + location.port;
+          if (location.port) {
+            zookeeperServer = zookeeperServer + ":" + location.port;
+          }
           zookeeperServer = zookeeperServer + path;
 
           client = zookeeper.createClient(zookeeperServer, {
@@ -233,37 +248,39 @@ export function zookeeperLocatorFactory(parameters:ZookeeperLocatorParameters):F
 
           clientWrapper.setClient(client);
 
-          var disconnectedHandler:NodeJS.Timer = null; // NodeJS.Timer is coming from the definitely typed.
+          var disconnectedHandler : NodeJS.Timer = null; // NodeJS.Timer is coming from the definitely typed.
 
-          client.on("connected", function () {
+          client.on("connected", () => {
             emitter.emit(LocatorException.CODE["CONNECTED"]);
 
-            if (disconnectedHandler) clearTimeout(disconnectedHandler);
+            if (disconnectedHandler) {
+              clearTimeout(disconnectedHandler);
+            }
           });
-          client.on("disconnected", function (count:number) {
+          client.on("disconnected", (count : number) => {
             emitter.emit(LocatorException.CODE["DISCONNECTED"]);
 
             disconnectedHandler = setTimeout(
-                function () {
+                () => {
                   client.close();
 
                   // further delaying the emitt of 'expired' event seems to avoid
                   // intermittent errors thrown by node-zookeeper-client
-                  setTimeout(function () {
+                  setTimeout(() => {
                     client.emit("expired");
                   }, 1000);
                 }
                 , sessionTimeout);
           });
-          client.on('state', (state:Object) => emitter.emit(LocatorException.CODE["STATE_CHANGE"], state, client.getSessionId()));
-          client.on("expired", function () {
+          client.on('state', (state : Object) => emitter.emit(LocatorException.CODE["STATE_CHANGE"], state, client.getSessionId()));
+          client.on("expired", () => {
             emitter.emit(LocatorException.CODE["EXPIRED"]);
             connect();
           });
           emitter.emit(LocatorException.CODE["CONNECTING"]);
           client.connect();
         })
-        .catch(function (err) {
+        .catch((err) => {
           emitter.emit(LocatorException.CODE["ZK_LOCATOR_ERROR"], err);
           connect();
         })
@@ -272,22 +289,24 @@ export function zookeeperLocatorFactory(parameters:ZookeeperLocatorParameters):F
 
   connect();
 
-  var pathManager:{ [path: string]: Locator } = {};
+  var pathManager : { [path : string] : Locator } = {};
 
-  function manager(path:string):Locator {
-    if (typeof path !== "string") {
+  function manager(_path : string) : Locator {
+    if (typeof _path !== "string") {
       throw new TypeError("path must be a string");
     }
-    if (path[0] !== "/") path = "/" + path;
-    pathManager[path] || (pathManager[path] = makeManagerForPath(
+    if (_path[0] !== "/") {
+      _path = "/" + _path;
+    }
+    pathManager[_path] = pathManager[_path] ? pathManager[_path] : makeManagerForPath(
         clientWrapper,
-        path,
+        _path,
         emitter,
         dataExtractor,
         locatorTimeout,
         strict
-    ));
-    return pathManager[path];
+    );
+    return pathManager[_path];
   }
 
   Object.keys(EventEmitter.prototype).forEach((fnName) =>
