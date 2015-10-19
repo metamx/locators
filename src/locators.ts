@@ -2,7 +2,7 @@
 import { simpleLocatorFactory } from './simple';
 import { requestLocatorFactory } from './request';
 import { zookeeperLocatorFactory } from './zookeeper';
-import { CODE } from './locatorException'
+import { CODE } from './locatorException';
 
 module locators {
     export var simple = simpleLocatorFactory;

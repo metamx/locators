@@ -6,24 +6,28 @@ import { Locator, Location } from "./common";
 var integerRegExp = /^\d+$/;
 
 export interface SimpleLocatorParameters {
-  resource: string;
-  defaultPort?: number;
+  resource : string;
+  defaultPort? : number;
 }
 
-export function simpleLocatorFactory(params:SimpleLocatorParameters) {
-  function simpleLocator(parameters:string):Locator;
-  function simpleLocator(parameters:SimpleLocatorParameters):Locator;
-  function simpleLocator(parameters:any):Locator {
-    if (typeof parameters === "string") parameters = {resource: parameters};
-    var resource:string = parameters.resource;
-    var defaultPort:number = parameters.defaultPort;
-    if (!resource) throw new Error("must have resource");
+export function simpleLocatorFactory(params : SimpleLocatorParameters) {
+  function simpleLocator(parameters : any) : Locator {
+    if (typeof parameters === "string") {
+      parameters = { resource : parameters };
+    }
+    var resource : string = parameters.resource;
+    var defaultPort : number = parameters.defaultPort;
+    if (!resource) {
+      throw new Error("must have resource");
+    }
 
     var locations = resource.split(";").map((locationString) => {
       var parts = locationString.split(":");
-      if (parts.length > 2) throw new Error("invalid resource part '" + locationString + "'");
+      if (parts.length > 2) {
+        throw new Error("invalid resource part '" + locationString + "'");
+      }
 
-      var location:Location = {
+      var location : Location = {
         host: parts[0]
       };
       if (parts.length === 2) {
@@ -38,7 +42,7 @@ export function simpleLocatorFactory(params:SimpleLocatorParameters) {
       return location;
     });
 
-    return () => <Promise.Promise<Location>>Promise(locations[Math.floor(Math.random() * locations.length)])
+    return () => <Promise.Promise<Location>>Promise(locations[Math.floor(Math.random() * locations.length)]);
   }
 
   return simpleLocator;
