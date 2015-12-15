@@ -85,7 +85,7 @@ describe 'Request locator', ->
         )
         .catch((err) ->
           expect(err).to.exist
-          expect(err.message).to.equal('getaddrinfo ENOTFOUND www.test-endpoint.com')
+          expect(err.message).to.equal('getaddrinfo ENOTFOUND www.test-endpoint.com www.test-endpoint.com:8080')
           done()
         )
         .done()

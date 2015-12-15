@@ -200,11 +200,11 @@ function makeManagerForPath(clientWrapper : ClientWrapper,
 export interface ZookeeperLocatorParameters {
   serverLocator : Locator;
   path : string;
-  dataExtractor : (data : string) => Location;
-  locatorTimeout : number;
-  sessionTimeout : number;
-  spinDelay : number;
-  retries : number;
+  dataExtractor? : (data : string) => Location;
+  locatorTimeout? : number;
+  sessionTimeout? : number;
+  spinDelay? : number;
+  retries? : number;
   strict? : boolean;
 }
 

@@ -1,5 +1,5 @@
 
-export var CODE: { [key : string] : string } = {
+export var CODE : any = {
   BAD_RESPONSE: "bad response",
 
   // zookeeper locator specific code
@@ -18,6 +18,8 @@ export var CODE: { [key : string] : string } = {
   PATH_NOT_FOUND: "zookeeper path is not found"
 };
 
+var errorCodes : { [key : string] : string } =  CODE;
+
 export function create(code : string) : Error {
-  return new Error(CODE[code]);
+  return new Error(errorCodes[code]);
 };

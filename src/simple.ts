@@ -10,7 +10,7 @@ export interface SimpleLocatorParameters {
   defaultPort? : number;
 }
 
-export function simpleLocatorFactory(params : SimpleLocatorParameters) {
+export function simpleLocatorFactory() : Function {
   function simpleLocator(parameters : any) : Locator {
     if (typeof parameters === "string") {
       parameters = { resource : parameters };
