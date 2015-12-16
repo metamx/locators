@@ -8,7 +8,7 @@ import zookeeper = require("node-zookeeper-client");
 import Client = zookeeper.Client;
 var Exception = zookeeper.Exception;
 
-import { Location, Locator } from "./common";
+import { Location, Locator, DataExtractor } from "./common";
 import LocatorException = require("./locatorException");
 
 
@@ -17,9 +17,6 @@ interface ZookeeperJS {
   port : number;
 }
 
-export interface DataExtractor {
-  (data : string) : Location;
-}
 
 class ClientWrapper {
   public client : Client;
@@ -200,7 +197,7 @@ function makeManagerForPath(clientWrapper : ClientWrapper,
 export interface ZookeeperLocatorParameters {
   serverLocator : Locator;
   path : string;
-  dataExtractor? : (data : string) => Location;
+  dataExtractor? : DataExtractor;
   locatorTimeout? : number;
   sessionTimeout? : number;
   spinDelay? : number;

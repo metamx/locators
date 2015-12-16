@@ -1,7 +1,8 @@
 
+
 import { simpleLocatorFactory, SimpleLocatorParameters } from './simple';
 import { requestLocatorFactory, RequestLocatorParameters } from './request';
-import { zookeeperLocatorFactory, DataExtractor, ZookeeperLocatorParameters } from './zookeeper';
+import { zookeeperLocatorFactory, ZookeeperLocatorParameters } from './zookeeper';
 import { CODE } from './locatorException';
 
 export var simple : typeof simpleLocatorFactory = simpleLocatorFactory;

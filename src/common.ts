@@ -6,13 +6,14 @@ export interface Location {
   port?: number;
 }
 
+
 export interface ReturnedLocation {
   address: string;
   port: number;
 }
 
 export interface DataExtractor {
-  (data: string): Location;
+  (data: string): any;
 }
 
 export interface Locator {
