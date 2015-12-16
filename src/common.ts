@@ -6,17 +6,18 @@ export interface Location {
   port?: number;
 }
 
+
 export interface ReturnedLocation {
   address: string;
   port: number;
 }
 
 export interface DataExtractor {
-  (data: string): Location;
+  (data: string): any;
 }
 
 export interface Locator {
-  (): Q.Promise<Location>;
+  (): Q.Promise<any>;
 
   // Event emitter extension
   addListener?(event: string, listener: Function): any;
