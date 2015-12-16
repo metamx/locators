@@ -17,7 +17,7 @@ export interface DataExtractor {
 }
 
 export interface Locator {
-  (): Q.Promise<any>;
+  (): Q.Promise<Location>;
 
   // Event emitter extension
   addListener?(event: string, listener: Function): any;
