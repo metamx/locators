@@ -1,26 +1,25 @@
 { expect } = require("chai")
 
 exec = require('child_process').exec
-Promise = require('q')
+Promise = require('bluebird')
 async = require('async') # TODO remove async
 zookeeper = require('node-zookeeper-client')
 {CreateMode} = zookeeper
 
-{ simpleLocatorFactory } = require('../build/simple')
-{ zookeeperLocatorFactory } = require('../build/zookeeper')
+{ simple: simpleLocatorFactory, zookeeper: zookeeperLocatorFactory } = require('../build/index')
 LocatorException = require('../build/locatorException')
 
 zkClient = zookeeper.createClient(
   'localhost:2181',
   {
     sessionTimeout: 10000
-    spinDelay: 1000
-    retries: 0
+    spinDelay: 5000
+    retries: 3
   }
 )
 
 # todo: set this to the path to your zkServer command to run tests
-zkServerCommandPath = 'zkServer'
+zkServerCommandPath = '~/Downloads/zookeeper-3.4.6/bin/zkServer.sh'
 
 rmStar = (path, callback) ->
   zkClient.getChildren(path, (err, children) ->
@@ -62,37 +61,36 @@ zkClient.connect()
 getPool = (locator) ->
   locations = []
 
-  deferred = Promise.defer()
-  done = false
+  return new Promise((resolve, reject) ->
+    done = false
 
-  action = (location) ->
-    location = location.host + ':' + location.port
+    action = (location) ->
+      location = location.host + ':' + location.port
 
-    if location in locations
-      done = true
-    else
-      locations.push(location)
+      if location in locations
+        done = true
+      else
+        locations.push(location)
 
-    getPoolHelper()
-    return
-
-
-  getPoolHelper = ->
-    if done
-      deferred.resolve(locations.sort())
+      getPoolHelper()
       return
 
-    locator()
+
+    getPoolHelper = ->
+      if done
+        resolve(locations.sort())
+        return
+
+      locator()
       .then(action)
       .catch((err) ->
-        deferred.reject(err)
+        reject(err)
       )
-      .done()
 
-    return
+      return
 
-  process.nextTick(getPoolHelper)
-  return deferred.promise
+    process.nextTick(getPoolHelper)
+  )
 
 simpleExec = (cmd, done) ->
   exec(cmd, (err, stdout, stderr) ->
@@ -135,6 +133,7 @@ describe 'Zookeeper locator', ->
 
     afterEach (done) ->
       simpleExec(zkServerCommandPath + ' stop', done)
+      return
 
     it "fails on non-existent service", (done) ->
       eventSeen = false
@@ -154,7 +153,7 @@ describe 'Zookeeper locator', ->
           expect(eventSeen).to.be.true
           done()
         )
-        .done()
+      return
 
 
     it "recovers after it fails on non-existent service", (done) ->
@@ -182,14 +181,13 @@ describe 'Zookeeper locator', ->
               .catch((err) ->
                 expect(err).not.to.exist
               )
-              .done()
           )
         )
-        .done()
+      return
 
 
   describe 'under normal condition', ->
-    @timeout 5000
+    @timeout 15000
 
     beforeEach (done) ->
       async.series([
@@ -204,19 +202,23 @@ describe 'Zookeeper locator', ->
       simpleExec(zkServerCommandPath + ' stop', done)
 
     describe 'common', ->
-      beforeEach ->
-        zookeeperLocator = zookeeperLocatorFactory({
-          serverLocator: simpleLocatorFactory()('localhost:2181')
-          path: '/discovery'
-          timeout: 5000
-        })
+      beforeEach (done) ->
+        try
+          zookeeperLocator = zookeeperLocatorFactory({
+            serverLocator: simpleLocatorFactory()('localhost:2181')
+            path: '/discovery'
+            timeout: 5000
+          })
 
-        zookeeperLocator.on LocatorException.CODE["NEW_POOL"], (path, pool) ->
-          expect(path).to.equal('/my:service')
-          lastSeenPool = pool
-          return
+          zookeeperLocator.on LocatorException.CODE["NEW_POOL"], (path, pool) ->
+            expect(path).to.equal('/my:service')
+            lastSeenPool = pool
+            return
 
-        myServiceLocator = zookeeperLocator('my:service')
+          myServiceLocator = zookeeperLocator('my:service')
+          done()
+        catch ex
+          done(ex)
 
       it "is memoized by path", ->
         expect(myServiceLocator).to.equal(zookeeperLocator('/my:service'))
@@ -231,8 +233,8 @@ describe 'Zookeeper locator', ->
             ])
             expect(lastSeenPool.length).to.equal(3)
             done()
-          )
-          .done()
+          ).catch(done)
+        return
 
       it "works after removing a node", (done) ->
         async.series([
@@ -249,8 +251,7 @@ describe 'Zookeeper locator', ->
               ])
               expect(lastSeenPool.length).to.equal(2)
               done()
-            )
-            .done()
+            ).catch(done)
         )
 
       it "works after adding a node", (done) ->
@@ -269,8 +270,7 @@ describe 'Zookeeper locator', ->
               ])
               expect(lastSeenPool.length).to.equal(4)
               done()
-            )
-            .done()
+            ).catch(done)
         )
 
       it "works after removing the remaining nodes", (done) ->
@@ -288,7 +288,6 @@ describe 'Zookeeper locator', ->
               expect(lastSeenPool.length).to.equal(0)
               done()
             )
-            .done()
         )
 
       it "works after adding nodes to an empty pool", (done) ->
@@ -307,8 +306,7 @@ describe 'Zookeeper locator', ->
                 '10.10.10.50:8080'
               ])
               done()
-            )
-            .done()
+            ).catch(done)
         )
 
       it "works after one error state", (done) ->
@@ -341,11 +339,9 @@ describe 'Zookeeper locator', ->
                       '10.10.10.50:8080'
                     ])
                     done()
-                  )
-                  .done()
+                  ).catch(done)
               )
             )
-            .done()
         )
 
       it "works after ZK disconnects by serving the cached pool", (done) ->
@@ -369,8 +365,7 @@ describe 'Zookeeper locator', ->
               ])
               expect(lastSeenPool.length).to.equal(3)
               done()
-            )
-            .done()
+            ).catch(done)
         )
 
       it "reconnects when ZK comes back online", (done) ->
@@ -396,8 +391,7 @@ describe 'Zookeeper locator', ->
               ])
               expect(connectEventSeen).to.be.true
               done()
-            )
-            .done()
+            ).catch(done)
         )
 
     describe "in strict mode", ->
@@ -415,6 +409,7 @@ describe 'Zookeeper locator', ->
           return
 
         myServiceLocator = zookeeperLocator('my:service')
+        return
 
       it "returns an empty list when all nodes drop out after a previous successful locating", (done) ->
         getPool(myServiceLocator)
@@ -440,10 +435,9 @@ describe 'Zookeeper locator', ->
                 expect(lastSeenPool.length).to.equal(0)
                 done()
               )
-              .done()
             )
-          )
-          .done()
+          ).catch(done)
+        return
 
     describe "in non-strict mode", ->
       lenientZookeeperLocator = null
@@ -464,6 +458,7 @@ describe 'Zookeeper locator', ->
           return
 
         lenientMyServiceLocator = lenientZookeeperLocator('my:service')
+        return
 
       it "returns the last successful list when all nodes drop out after a previous successful locating", (done) ->
         getPool(lenientMyServiceLocator)
@@ -487,14 +482,14 @@ describe 'Zookeeper locator', ->
                     '10.10.10.30:8080'
                   ])
                   done()
-                )
-                .done()
+                ).catch(done)
             )
-          )
-          .done()
+          ).catch(done)
+        return
 
 
   describe "another locator after zkClient connects", ->
+    @timeout 5000
     beforeEach (done) ->
       async.series([
         (callback) -> simpleExec(zkServerCommandPath + ' start', callback)
@@ -521,8 +516,7 @@ describe 'Zookeeper locator', ->
           .then((location) ->
             expect(location).to.exist
             done()
-          )
-          .done()
+          ).catch(done)
       )
 
     it "functions for a different service", (done) ->
@@ -536,12 +530,11 @@ describe 'Zookeeper locator', ->
             expect(err.message).to.equal(LocatorException.CODE["EMPTY_POOL"])
             done()
           )
-          .done()
       )
 
 
   describe "when ZK connection times out", ->
-    @timeout 5000
+    @timeout 15000
     zookeeperLocator = null
     myServiceLocator = null
 
@@ -579,9 +572,8 @@ describe 'Zookeeper locator', ->
               expect(err.message).to.equal('ZOOKEEPER_TIMEOUT')
               done()
             )
-            .done()
         )
-        .done()
+      return
 
     it "picks up after server start", (done) ->
       async.series [
@@ -596,8 +588,7 @@ describe 'Zookeeper locator', ->
               '10.10.10.10:8080'
             ])
             done()
-          )
-          .done()
+          ).catch(done)
 
   describe "when ZK server goes down", ->
     # start the server
@@ -610,7 +601,7 @@ describe 'Zookeeper locator', ->
     @timeout 5000
 
     it "zk client expires after sessionTimeout", (done) ->
-      this.timeout(12000);
+      this.timeout(15000);
       async.series [
         (callback) -> simpleExec(zkServerCommandPath + ' start', callback)
         (callback) -> rmStar('/discovery/my:service', callback)
@@ -623,7 +614,8 @@ describe 'Zookeeper locator', ->
           serverLocator: simpleLocatorFactory()('localhost:2181')
           path: '/discovery'
           sessionTimeout: 2000
-          retries: 0
+          spinDelay: 5000
+          retries: 3
         })
         myServiceLocator = zookeeperLocator('my:service')
 
@@ -645,10 +637,10 @@ describe 'Zookeeper locator', ->
                     setTimeout(->
                       expect(ctr).to.equal(1)
                       done()
-                    , 3000)
+                    , 5000)
                   )
                 )
               )
             )
-          )
-          .done()
+          ).catch(done)
+        return

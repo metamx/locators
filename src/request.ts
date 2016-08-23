@@ -1,82 +1,84 @@
 
-import Promise = require("q");
+import Promise = require("bluebird");
 import http = require("http");
 import https = require("https");
 
-import { Locator, Location, DataExtractor, ReturnedLocation } from "./common";
+import {Locator, Location, DataExtractor, ReturnedLocation, LocatorFactory} from "./common";
 import LocatorException = require("./locatorException");
 
 export interface RequestLocatorParameters {
-  url : string;
-  dataExtractor? : DataExtractor;
+    url : string;
+    dataExtractor? : DataExtractor;
 }
 
-function defaultDataExtractor(data : string) : Location {
-  var locations : ReturnedLocation[];
-  try {
-    locations = JSON.parse(data).servers;
-  } catch (e) {
-    return null;
-  }
+export class RequestLocator {
+    static getLocatorFactory() : LocatorFactory {
+        return function resourceLocator(parameters : any) : Locator {
+            if (typeof parameters === "string") {
+                parameters = { url : parameters };
+            }
+            let url : string = parameters.url;
+            let request : any;
+            if (url.indexOf('http://') === 0) {
+                request = http;
+            } else if (url.indexOf('https://') === 0) {
+                request = https;
+            } else {
+                throw new Error(`invalid url: ${url}`);
+            }
 
-  if (!locations) {
-    return null;
-  }
+            let dataExtractor : DataExtractor = parameters.dataExtractor ?
+                parameters.dataExtractor :
+                RequestLocator.DefaultDataExtractor;
 
-  var location = locations[Math.floor(Math.random() * locations.length)];
+            if (!url) {
+                throw new Error("must have resource");
+            }
 
-  return {
-    host: location.address,
-    port: location.port
-  };
-}
+            return <Locator>(() => {
+                return new Promise<Location>((resolve, reject) => {
+                    request.get(url, (res : http.ClientResponse) => {
+                        let output : string[] = [];
+                        res.setEncoding('utf8');
 
-export function requestLocatorFactory() : Function {
-  function resourceLocator(parameters : any) : Locator {
-    if (typeof parameters === "string") {
-      parameters = { url : parameters };
-    }
-    var url : string = parameters.url;
-    var request : any;
-    if (url.indexOf('http://') === 0) {
-      request = http;
-    } else if (url.indexOf('https://') === 0) {
-      request = https;
-    } else {
-      throw new Error(`invalid url: ${url}`);
-    }
+                        res.on('data', (chunk : string) => {
+                            output.push(chunk);
+                        });
 
-    var dataExtractor : DataExtractor = parameters.dataExtractor;
-    dataExtractor = dataExtractor ? dataExtractor : defaultDataExtractor;
+                        res.on('end', () => {
+                            if (200 <= res.statusCode && res.statusCode < 300) {
+                                const result = output.join('');
+                                resolve(dataExtractor(result));
+                            } else {
+                                reject(LocatorException.create("BAD_RESPONSE"));
+                            }
+                        });
+                    }).on('error', (err : Error) => {
+                        reject(err);
+                    });
+                });
+            });
+        };
+    };
 
-    if (!url) {
-      throw new Error("must have resource");
-    }
 
-    var deferred = <Promise.Deferred<Location>>Promise.defer();
-
-    request.get(url, function (res : http.ClientResponse) {
-      var output : string[] = [];
-      res.setEncoding('utf8');
-
-      res.on('data', function (chunk : string) {
-        output.push(chunk);
-      });
-
-      res.on('end', function () {
-        if (200 <= res.statusCode && res.statusCode < 300) {
-          var result = output.join('');
-          deferred.resolve(dataExtractor(result));
-        } else {
-          deferred.reject(LocatorException.create("BAD_RESPONSE"));
+    static DefaultDataExtractor : DataExtractor = (data : string) : Location => {
+        let locations : ReturnedLocation[];
+        try {
+            locations = JSON.parse(data).servers;
+        } catch (e) {
+            return null;
         }
-      });
-    }).on('error', function (err : Error) {
-      deferred.reject(err);
-    });
 
-    return () => deferred.promise;
-  }
+        if (!locations) {
+            return null;
+        }
 
-  return resourceLocator;
+        const location = locations[Math.floor(Math.random() * locations.length)];
+
+        return {
+            host: location.address,
+            port: location.port
+        };
+    };
 }
