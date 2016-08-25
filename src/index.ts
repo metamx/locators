@@ -1,11 +1,18 @@
 
-
-import { simpleLocatorFactory, SimpleLocatorParameters } from './simple';
-import { requestLocatorFactory, RequestLocatorParameters } from './request';
-import { zookeeperLocatorFactory, ZookeeperLocatorParameters } from './zookeeper';
+import {LocatorFactory} from "./common";
+import { SimpleLocator, SimpleLocatorParameters } from './simple';
+import { RequestLocator, RequestLocatorParameters } from './request';
+import { ZookeeperLocator, ZookeeperLocatorParameters } from './zookeeper';
 import { CODE } from './locatorException';
 
-export var simple : typeof simpleLocatorFactory = simpleLocatorFactory;
-export var request : typeof requestLocatorFactory = requestLocatorFactory;
-export var zookeeper : typeof zookeeperLocatorFactory = zookeeperLocatorFactory;
-export var EXCEPTION_CODE : typeof CODE = CODE;
+export * from './common';
+export * from './locatorException';
+export * from './simple';
+export * from './request';
+export * from './zookeeper';
+
+// shorthand exports for legacy compatibility
+export const simple : () => LocatorFactory = SimpleLocator.getLocatorFactory;
+export const request : () => LocatorFactory = RequestLocator.getLocatorFactory;
+export const zookeeper : (params : ZookeeperLocatorParameters) => LocatorFactory = ZookeeperLocator.getLocatorFactory;
+export const EXCEPTION_CODE : typeof CODE = CODE;

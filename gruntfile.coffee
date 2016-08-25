@@ -4,47 +4,18 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks('grunt-contrib-watch')
   grunt.loadNpmTasks('grunt-ts')
   grunt.loadNpmTasks('grunt-tslint')
-  grunt.loadNpmTasks('grunt-tsd')
   grunt.loadNpmTasks('dts-generator')
 
   config =
     ts:
-      options:
-        target: 'es5'
-        module: 'commonjs'
-        declaration: true
-        emitDecoratorMetadata: true
-        failOnTypeErrors: false
-        noEmitHelpers: true
-        sourceMap: false
       build:
-        src:  [ 'src/*.ts', 'typings/**/*.ts', 'typings_custom/*.ts' ]
-        outDir: 'build/'
-        baseDir: 'src/'
-      'build-dev':
-        src:  [ 'src/*.ts', 'typings/**/*.ts', 'typings_custom/*.ts' ]
-        outDir: 'build/'
-        baseDir: 'src/'
-        options:
-          sourceMap: true
+        tsconfig: 'tsconfig.json'
 
     tslint:
       options:
         configuration: grunt.file.readJSON("tslint.json")
       files:
         src: [ 'src/**/*.ts' ]
-
-    tsd:
-      load:
-        options:
-          command: 'reinstall'
-          latest: false
-          config: 'tsd.json'
-      refresh:
-        options:
-          command: 'reinstall'
-          latest: true
-          config: 'tsd.json'
 
     dtsGenerator:
       options:
@@ -54,8 +25,6 @@ module.exports = (grunt) ->
         main: 'locators/index'
       default:
         src: [ 'src/**/*.ts' ]
-
-
 
     watch:
       typescripts:
@@ -68,16 +37,8 @@ module.exports = (grunt) ->
   grunt.initConfig(config)
 
   grunt.registerTask 'compile', [
-    'tsd:load',
     'tslint',
     'ts:build',
-    'dtsGenerator'
-  ]
-
-  grunt.registerTask 'compile-dev', [
-    'tsd:load',
-    'tslint',
-    'ts:build-dev',
     'dtsGenerator'
   ]
 

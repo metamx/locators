@@ -1,10 +1,10 @@
 { expect } = require("chai")
 
-{simpleLocatorFactory} = require('../build/simple')
+{simple} = require('../build/index')
 
 describe 'Simple locator', ->
   describe 'shortcut function', ->
-    locator = simpleLocatorFactory()
+    locator = simple()
     simpleLocator = locator("localhost:8080")
 
     it "works", (done) ->
@@ -19,7 +19,7 @@ describe 'Simple locator', ->
         .done()
 
   describe 'full option function', ->
-    locator = simpleLocatorFactory()
+    locator = simple()
     simpleLocator = locator({
       resource: "localhost;koalastothemax.com:80"
       defaultPort: 8181

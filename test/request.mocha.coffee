@@ -1,7 +1,7 @@
 { expect } = require("chai")
 nock = require("nock")
 
-{requestLocatorFactory} = require('../build/request')
+{request} = require('../build/index')
 
 describe 'Request locator', ->
   scope = null
@@ -15,7 +15,7 @@ describe 'Request locator', ->
         .get("/list")
         .reply(200, '{"servers": [{"address": "localhost", "port": 8080}]}')
 
-      locator = requestLocatorFactory()
+      locator = request()
       requestLocator = locator("http://www.test-endpoint.com:8080/list")
 
       requestLocator()
@@ -34,7 +34,7 @@ describe 'Request locator', ->
       .get("/list")
       .reply(200, '{"blah": [{"address": "localhost", "port": 8080}, {"address": "localhost", "port": 1234}]}')
 
-      locator = requestLocatorFactory()
+      locator = request()
       requestLocator = locator({
         url: "http://www.test-endpoint.com:8080/list"
         dataExtractor: (data) ->
@@ -61,7 +61,7 @@ describe 'Request locator', ->
         .get("/list")
         .reply(404, 'NOT_FOUND')
 
-      locator = requestLocatorFactory()
+      locator = request()
       requestLocator = locator("http://www.test-endpoint.com:8080/list")
 
       requestLocator()
@@ -76,7 +76,7 @@ describe 'Request locator', ->
         .done()
 
     it "returns an error when gets network error", (done) ->
-      locator = requestLocatorFactory()
+      locator = request()
       requestLocator = locator("http://www.test-endpoint.com:8080/list")
 
       requestLocator()
