@@ -18,11 +18,12 @@ export class RequestLocator {
                 parameters = { url : parameters };
             }
             let url : string = parameters.url;
-            let request : any;
+            let agent : any;
+
             if (url.indexOf('http://') === 0) {
-                request = http;
+                agent = http;
             } else if (url.indexOf('https://') === 0) {
-                request = https;
+                agent = https;
             } else {
                 throw new Error(`invalid url: ${url}`);
             }
@@ -35,9 +36,9 @@ export class RequestLocator {
                 throw new Error("must have resource");
             }
 
-            return <Locator>(() => {
+            return () => {
                 return new Promise<Location>((resolve, reject) => {
-                    request.get(url, (res : http.ClientResponse) => {
+                    agent.get(url, (res : http.ClientResponse) => {
                         let output : string[] = [];
                         res.setEncoding('utf8');
 
@@ -57,7 +58,7 @@ export class RequestLocator {
                         reject(err);
                     });
                 });
-            });
+            };
         };
     };
 

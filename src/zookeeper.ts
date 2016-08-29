@@ -7,8 +7,8 @@ import {Location, Locator, LocatorEmitter, LocatorFactory, DataExtractor} from "
 import LocatorException = require("./locatorException");
 
 function deferredLocationRequest() : Promise.Resolver<Location> {
-    var resolve, reject;
-    var promise = new Promise<Location>(function() {
+    let resolve, reject;
+    const promise = new Promise<Location>(function() {
         resolve = arguments[0];
         reject = arguments[1];
     });
@@ -55,7 +55,7 @@ export class ZookeeperLocator {
     static DefaultRetries : number = 3;
 
     static DefaultDataExtractor : DataExtractor = (data : string) : Location => {
-        var zkJS : ZookeeperJS;
+        let zkJS : ZookeeperJS;
         try {
             zkJS = JSON.parse(data);
         } catch (e) {
@@ -90,6 +90,8 @@ class ZookeeperLocatorFatory extends EventEmitter {
     private spinDelay : number;
     private retries : number;
     private strict : boolean;
+
+    private connected : boolean;
     private pathLocatorFactories : { [key : string] : ZookeeperPathLocatorFactory};
 
     /**
@@ -123,6 +125,7 @@ class ZookeeperLocatorFatory extends EventEmitter {
         super();
         let { serverLocator, path, dataExtractor, locatorTimeout, sessionTimeout, spinDelay, retries, strict } = parameters;
 
+        this.connected = false;
         this.serverLocator = serverLocator;
         this.discoveryPath = path;
         this.dataExtractor = dataExtractor ? dataExtractor : ZookeeperLocator.DefaultDataExtractor;
@@ -151,16 +154,11 @@ class ZookeeperLocatorFatory extends EventEmitter {
     public connect = () => {
         this.serverLocator()
             .then((location) => {
-                var zookeeperServer = location.host;
+                let zookeeperServer = location.host;
                 if (location.port) {
                     zookeeperServer = zookeeperServer + ":" + location.port;
                 }
                 zookeeperServer = zookeeperServer + this.discoveryPath;
-
-                if (this.client) {
-                    this.client.removeAllListeners();
-                    this.client = null;
-                }
 
                 this.client = zookeeper.createClient(zookeeperServer, {
                     sessionTimeout: this.sessionTimeout,
@@ -170,30 +168,35 @@ class ZookeeperLocatorFatory extends EventEmitter {
 
                 this.clientWrapper.setClient(this.client);
 
-                var disconnectedHandler = null;
+                let disconnectedHandler = null;
 
-                this.client.once("connected", () => {
+                this.client.on("connected", () => {
+                    this.connected = true;
                     this.emit(LocatorException.CODE.CONNECTED);
                     if (disconnectedHandler) {
                         clearTimeout(disconnectedHandler);
                     }
                 });
 
-                this.client.once("disconnected", (count : number) => {
+                this.client.on("disconnected", (count : number) => {
+                    this.connected = false;
                     this.emit(LocatorException.CODE.DISCONNECTED);
 
                     disconnectedHandler = setTimeout(() => {
-                        this.client.close();
-                        process.nextTick(() => {
-                            this.client.emit("expired");
-                        });
+                        if (!this.connected) {
+                            process.nextTick(() => {
+                                this.client.emit("expired");
+                            });
+                        }
                     }, this.sessionTimeout);
-
                 });
                 this.client.on('state', (state : Object) => {
                     this.emit(LocatorException.CODE.STATE_CHANGE, state, this.client.getSessionId());
                 });
                 this.client.once("expired", () => {
+                    this.client.removeAllListeners();
+                    this.connected = false;
+                    this.client.close();
                     this.emit(LocatorException.CODE.EXPIRED);
                     this.reconnect();
                 });
@@ -202,6 +205,8 @@ class ZookeeperLocatorFatory extends EventEmitter {
                 this.client.connect();
             })
             .catch((err) => {
+                this.connected = false;
+                this.client.close();
                 this.emit(LocatorException.CODE.ZK_LOCATOR_ERROR, err);
                 this.connect();
             });
@@ -313,7 +318,7 @@ class ZookeeperPathLocatorFactory {
      * @returns {Bluebird<R>}
      */
     getLocator = () : Promise<Location> => {
-        var locator = deferredLocationRequest();
+        const locator = deferredLocationRequest();
         if (this.stale) {
             this.setLocationPool(null);
             this.clientWrapper.client.exists(this.path, this.onLocationPathExists);
@@ -396,7 +401,7 @@ class ZookeeperPathLocatorFactory {
      * @param deferred
      */
     private resolveLocationRequest(deferred : Promise.Resolver<Location>) {
-        var chosenPool = this.getLocationPool();
+        const chosenPool = this.getLocationPool();
         if (!chosenPool) {
             return deferred.reject(Error("get next called on loading pool"));
         }
