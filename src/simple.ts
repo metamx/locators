@@ -28,14 +28,12 @@ export class SimpleLocator {
             }
 
             let locations = resource.split(";").map((locationString) => {
-                var parts = locationString.split(":");
+                const parts = locationString.split(":");
                 if (parts.length > 2) {
                     throw new Error("invalid resource part '" + locationString + "'");
                 }
 
-                var location : Location = {
-                    host: parts[0]
-                };
+                const location : Location = { host: parts[0] };
                 if (parts.length === 2) {
                     if (!integerRegExp.test(parts[1])) {
                         throw new Error("invalid port in resource '" + parts[1] + "'");
@@ -48,7 +46,7 @@ export class SimpleLocator {
                 return location;
             });
 
-            return <Locator>(() => { return Promise.resolve<Location>(locations[Math.floor(Math.random() * locations.length)]); });
+            return () => { return Promise.resolve<Location>(locations[Math.floor(Math.random() * locations.length)]); };
         };
     }
 }

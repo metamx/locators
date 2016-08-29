@@ -108,7 +108,7 @@ describe 'Zookeeper locator', ->
   lastSeenPool = null
 
   describe 'when locating non-existent service', ->
-    @timeout 5000
+    @timeout 10000
 
     beforeEach (done) ->
       async.series([
