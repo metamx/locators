@@ -22,7 +22,6 @@ describe 'Simple locator', ->
     it "works with prefix", (done) ->
       prefixLocator()
       .then((location) ->
-        console.log(location)
         expect(location.host).to.equal('https://localhost')
         expect(location.port).to.equal(8080)
         done()
