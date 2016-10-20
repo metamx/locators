@@ -35,12 +35,12 @@ export class SimpleLocator {
                 const temp = locationString.replace(prefix, '');
                 const parts = temp.split(":");
                 if (parts.length > 2) {
-                    throw new Error("invalid resource part '" + temp + "'");
+                    throw new Error(`invalid resource part '${temp}'`);
                 }
                 const location : Location = { host: `${prefix}${parts[0]}` };
                 if (parts.length === 2) {
                     if (!integerRegExp.test(parts[1])) {
-                        throw new Error("invalid port in resource '" + parts[1] + "'");
+                        throw new Error(`invalid port in resource '${parts[1]}'`);
                     }
                     location.port = Number(parts[1]);
                 } else if (defaultPort) {
