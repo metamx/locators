@@ -1,6 +1,6 @@
 {
   "name": "locators",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A collection of promise based service discovery 'locators'",
   "keywords": [
     "zookeeper",
