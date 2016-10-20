@@ -27,13 +27,17 @@ export class SimpleLocator {
                 throw new Error("must have resource");
             }
 
-            let locations = resource.split(";").map((locationString) => {
-                const parts = locationString.split(":");
-                if (parts.length > 2) {
-                    throw new Error("invalid resource part '" + locationString + "'");
-                }
 
-                const location : Location = { host: parts[0] };
+            let locations = resource.split(";").map((locationString) => {
+                const prefix = locationString.indexOf('https') === 0 ?
+                    'https://' : locationString.indexOf('http') === 0 ? 'http://' : '';
+
+                const temp = locationString.replace(prefix, '');
+                const parts = temp.split(":");
+                if (parts.length > 2) {
+                    throw new Error("invalid resource part '" + temp + "'");
+                }
+                const location : Location = { host: `${prefix}${parts[0]}` };
                 if (parts.length === 2) {
                     if (!integerRegExp.test(parts[1])) {
                         throw new Error("invalid port in resource '" + parts[1] + "'");

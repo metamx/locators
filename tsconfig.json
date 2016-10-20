@@ -8,19 +8,9 @@
         "rootDir": "src/",
         "declaration": true
     },
-    "filesGlob": [
+    "include": [
         "src/**/*.ts",
         "typings/index.d.ts",
         "typings_local/*.ts"
-    ],
-    "files": [
-        "src/common.ts",
-        "src/index.ts",
-        "src/locatorException.ts",
-        "src/request.ts",
-        "src/simple.ts",
-        "src/zookeeper.ts",
-        "typings/index.d.ts",
-        "typings_local/node-zookeeper-client.d.ts"
     ]
 }
