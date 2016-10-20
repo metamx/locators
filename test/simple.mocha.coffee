@@ -6,6 +6,7 @@ describe 'Simple locator', ->
   describe 'shortcut function', ->
     locator = simple()
     simpleLocator = locator("localhost:8080")
+    prefixLocator = locator("https://localhost:8080")
 
     it "works", (done) ->
       simpleLocator()
@@ -17,6 +18,16 @@ describe 'Simple locator', ->
           done()
         )
         .done()
+
+    it "works with prefix", (done) ->
+      prefixLocator()
+      .then((location) ->
+        console.log(location)
+        expect(location.host).to.equal('https://localhost')
+        expect(location.port).to.equal(8080)
+        done()
+      )
+      .done()
 
   describe 'full option function', ->
     locator = simple()
