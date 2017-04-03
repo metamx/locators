@@ -1,9 +1,9 @@
 
 import {LocatorFactory} from "./common";
-import { SimpleLocator, SimpleLocatorParameters } from './simple';
-import { RequestLocator, RequestLocatorParameters } from './request';
-import { ZookeeperLocator, ZookeeperLocatorParameters } from './zookeeper';
 import { CODE } from './locatorException';
+import { RequestLocator, RequestLocatorParameters } from './request';
+import { SimpleLocator, SimpleLocatorParameters } from './simple';
+import { ZookeeperLocator, ZookeeperLocatorParameters } from './zookeeper';
 
 export * from './common';
 export * from './locatorException';

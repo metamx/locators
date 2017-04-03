@@ -1,17 +1,16 @@
-
 import Promise = require("bluebird");
 
-import {Locator, Location, LocatorFactory} from "./common";
+import {Location, Locator, LocatorFactory} from "./common";
 
 const integerRegExp = /^\d+$/;
 
 export interface SimpleLocatorParameters {
-  resource : string;
-  defaultPort? : number;
+    resource : string;
+    defaultPort? : number;
 }
 
 export class SimpleLocator {
-    static getLocatorFactory() : LocatorFactory {
+    public static getLocatorFactory() : LocatorFactory {
         return function simpleLocator(parameters : string|SimpleLocatorParameters) : Locator {
             let resource : string = null;
             let defaultPort : number = null;
@@ -27,8 +26,7 @@ export class SimpleLocator {
                 throw new Error("must have resource");
             }
 
-
-            let locations = resource.split(";").map((locationString) => {
+            const locations = resource.split(";").map((locationString) => {
                 const prefix = locationString.indexOf('https') === 0 ?
                     'https://' : locationString.indexOf('http') === 0 ? 'http://' : '';
 
@@ -37,7 +35,7 @@ export class SimpleLocator {
                 if (parts.length > 2) {
                     throw new Error(`invalid resource part '${temp}'`);
                 }
-                const location : Location = { host: `${prefix}${parts[0]}` };
+                const location : Location = {host: `${prefix}${parts[0]}`};
                 if (parts.length === 2) {
                     if (!integerRegExp.test(parts[1])) {
                         throw new Error(`invalid port in resource '${parts[1]}'`);
@@ -50,7 +48,9 @@ export class SimpleLocator {
                 return location;
             });
 
-            return () => { return Promise.resolve<Location>(locations[Math.floor(Math.random() * locations.length)]); };
+            return () => {
+                return Promise.resolve<Location>(locations[Math.floor(Math.random() * locations.length)]);
+            };
         };
     }
 }

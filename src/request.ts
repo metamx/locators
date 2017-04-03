@@ -1,9 +1,7 @@
-
-import Promise = require("bluebird");
 import http = require("http");
 import https = require("https");
-
-import {Locator, Location, DataExtractor, ReturnedLocation, LocatorFactory} from "./common";
+import Promise = require("bluebird");
+import {DataExtractor, Location, Locator, LocatorFactory, ReturnedLocation} from "./common";
 import LocatorException = require("./locatorException");
 
 export interface RequestLocatorParameters {
@@ -12,12 +10,12 @@ export interface RequestLocatorParameters {
 }
 
 export class RequestLocator {
-    static getLocatorFactory() : LocatorFactory {
+    public static getLocatorFactory() : LocatorFactory {
         return function resourceLocator(parameters : any) : Locator {
             if (typeof parameters === "string") {
-                parameters = { url : parameters };
+                parameters = {url: parameters};
             }
-            let url : string = parameters.url;
+            const url : string = parameters.url;
             let agent : any;
 
             if (url.indexOf('http://') === 0) {
@@ -28,7 +26,7 @@ export class RequestLocator {
                 throw new Error(`invalid url: ${url}`);
             }
 
-            let dataExtractor : DataExtractor = parameters.dataExtractor ?
+            const dataExtractor : DataExtractor = parameters.dataExtractor ?
                 parameters.dataExtractor :
                 RequestLocator.DefaultDataExtractor;
 
@@ -39,7 +37,7 @@ export class RequestLocator {
             return () => {
                 return new Promise<Location>((resolve, reject) => {
                     agent.get(url, (res : http.ClientResponse) => {
-                        let output : string[] = [];
+                        const output : string[] = [];
                         res.setEncoding('utf8');
 
                         res.on('data', (chunk : string) => {
@@ -60,10 +58,9 @@ export class RequestLocator {
                 });
             };
         };
-    };
+    }
 
-
-    static DefaultDataExtractor : DataExtractor = (data : string) : Location => {
+    public static DefaultDataExtractor : DataExtractor = (data : string) : Location => {
         let locations : ReturnedLocation[];
         try {
             locations = JSON.parse(data).servers;
@@ -81,5 +78,5 @@ export class RequestLocator {
             host: location.address,
             port: location.port
         };
-    };
+    }
 }
