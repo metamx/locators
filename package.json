@@ -11,7 +11,7 @@
     "type": "git",
     "url": "http://github.com/metamx/locators.git"
   },
-  "main": "build/index.d.ts",
+  "main": "build/index.js",
   "scripts": {
     "compile": "tsc",
     "lint": "tslint -c tslint.json src/**/*.ts",
