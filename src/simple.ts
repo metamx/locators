@@ -11,7 +11,7 @@ export interface SimpleLocatorParameters {
 
 export class SimpleLocator {
     public static getLocatorFactory() : LocatorFactory {
-        return function simpleLocator(parameters : string|SimpleLocatorParameters) : Locator {
+        return function simpleLocator(parameters : string | SimpleLocatorParameters) : Locator {
             let resource : string = null;
             let defaultPort : number = null;
 
