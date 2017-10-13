@@ -1,7 +1,7 @@
+import Promise = require("bluebird");
 import {EventEmitter} from "events";
 import http = require("http");
 import zookeeper = require("node-zookeeper-client");
-import Promise = require("bluebird");
 
 import {DataExtractor, Location, Locator, LocatorEmitter, LocatorFactory} from "./common";
 import LocatorException = require("./locatorException");

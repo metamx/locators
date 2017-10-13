@@ -1,6 +1,7 @@
+import Promise = require("bluebird");
 import http = require("http");
 import https = require("https");
-import Promise = require("bluebird");
+
 import {DataExtractor, Location, Locator, LocatorFactory, ReturnedLocation} from "./common";
 import LocatorException = require("./locatorException");
 

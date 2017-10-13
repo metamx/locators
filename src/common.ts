@@ -1,5 +1,5 @@
-import {EventEmitter} from 'events';
 import Promise = require("bluebird");
+import {EventEmitter} from 'events';
 
 export type DataExtractor = (data : string) => any;
 
