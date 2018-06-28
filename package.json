@@ -20,6 +20,7 @@
     "prepublish": "npm run build",
     "test": "node_modules/.bin/mocha --timeout 5000"
   },
+  "typings": "build/index.d.ts",
   "dependencies": {
     "bluebird": "^3.5.0",
     "node-zookeeper-client": "^0.2.2"
