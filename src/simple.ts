@@ -35,7 +35,7 @@ export class SimpleLocator {
                 if (parts.length > 2) {
                     throw new Error(`invalid resource part '${temp}'`);
                 }
-                const location : Location = {host: `${prefix}${parts[0]}`};
+                const location : Location = {host: `${prefix}${parts[0]}`, hostname: `${prefix}${parts[0]}`};
                 if (parts.length === 2) {
                     if (!integerRegExp.test(parts[1])) {
                         throw new Error(`invalid port in resource '${parts[1]}'`);
