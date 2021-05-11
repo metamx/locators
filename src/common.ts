@@ -13,6 +13,7 @@ export interface LocatorEmitter extends Locator, EventEmitter { }
 
 export interface Location {
     host : string;
+    hostname? : string;
     port? : number;
 }
 
